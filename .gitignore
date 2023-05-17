@@ -1,6 +1,7 @@
 src/__pycache__
 src/
-visual_behavior_glm/__pycache__/
+visual_behavior_glm_NP/__pycache__/
+visual_behavior_glm_np.egg-info/
 
 # vs code
 .idea/
