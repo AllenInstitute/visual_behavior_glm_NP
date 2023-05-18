@@ -11,6 +11,7 @@ from sklearn.model_selection import cross_validate
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
+NEURO_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
 
 def decode_experiment(oeid, data='events',window=[0,.75]):
 
@@ -43,8 +44,7 @@ def decode_experiment(oeid, data='events',window=[0,.75]):
 
     # Save results
     print('Save results')
-    filename='/allen/programs/braintv/workgroups/nc-ophys/alex.piet'+\
-        '/behavior/decoding/experiments/' 
+    filename=NEURO_DIR+'decoding/experiments/' 
     filename += str(oeid)+'.pkl'
     print('Saving to: '+filename)
     results_df.to_pickle(filename)
@@ -53,11 +53,9 @@ def decode_experiment(oeid, data='events',window=[0,.75]):
 
 def load_experiment_results(oeid,version=None):
     if version is not None:
-        filename='/allen/programs/braintv/workgroups/nc-ophys/alex.piet'+\
-            '/behavior/decoding/experiments_fit_{}/'.format(version)
+        filename=NEURO_DIR+'decoding/experiments_fit_{}/'.format(version)
     else:
-        filename='/allen/programs/braintv/workgroups/nc-ophys/alex.piet'+\
-            '/behavior/decoding/experiments/' 
+        filename=NEURO_DIR+'decoding/experiments/' 
     filename += str(oeid)+'.pkl'
     return pd.read_pickle(filename)
 
@@ -189,8 +187,7 @@ def plot_by_strategy_performance(visual, timing,savefig,cell_type):
 
     # save decoder performance figure
     if savefig:
-        filename='/allen/programs/braintv/workgroups/nc-ophys/alex.piet'+\
-            '/behavior/decoding/figures/' 
+        filename=NEURO_DIR+'decoding/figures/' 
         filename += cell_type+'_decoder_performance.png'
         plt.savefig(filename)
 
@@ -235,8 +232,7 @@ def plot_by_strategy_correlation(visual, timing, savefig, cell_type):
 
     # save behavior correlation figure
     if savefig:
-        filename='/allen/programs/braintv/workgroups/nc-ophys/alex.piet'+\
-            '/behavior/decoding/figures/' 
+        filename=NEURO_DIR+'decoding/figures/' 
         filename += cell_type+'_decoder_correlation.png'
         plt.savefig(filename)
 
@@ -330,11 +326,9 @@ def plot_by_strategy_scatter(visual, timing, metric, savefig, cell_type,
 
     if savefig:
         if version is None:
-            filename='/allen/programs/braintv/workgroups/nc-ophys/alex.piet'+\
-                '/behavior/decoding/figures/' 
+            filename=NEURO_DIR+'decoding/figures/' 
         else:
-            filename='/allen/programs/braintv/workgroups/nc-ophys/alex.piet'+\
-                '/behavior/decoding/figures_fit_{}/'.format(version)
+            filename=NEURO_DIR+'decoding/figures_fit_{}/'.format(version)
         if meso:
             filename += 'scatter_by_cre_meso_'+metric+'.svg'  
         else:
@@ -384,8 +378,7 @@ def plot_by_strategy_hit_vs_miss(visual, timing, savefig, cell_type):
 
     # save hit vs miss decoder performance figure
     if savefig:
-        filename='/allen/programs/braintv/workgroups/nc-ophys/alex.piet'+\
-            '/behavior/decoding/figures/' 
+        filename=NEURO_DIR+'decoding/figures/' 
         filename += cell_type+'_hit_vs_miss_decoder_performance.png'
         plt.savefig(filename)
 
@@ -596,8 +589,7 @@ def plot_behavior_ratio(df,ncells=2,savefig=False,version=None):
 
     # save decoder performance figure
     if savefig:
-        filename='/allen/programs/braintv/workgroups/nc-ophys/alex.piet'+\
-            '/behavior/decoding/figures_fit_{}/'.format(version) 
+        filename=NEURO_DIR+'decoding/figures_fit_{}/'.format(version) 
         filename += 'exc_decoder_correlation_ratio.png'
         print(filename)
         plt.savefig(filename)

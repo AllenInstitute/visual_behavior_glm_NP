@@ -10,6 +10,8 @@ import psy_output_tools as po
 
 BEHAVIOR_VERSION = 21
 
+NEURO_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
+
 def add_area_depth(df,experiment_table):
     '''
         Adds targeted_structure, and layer columns from experiment table 
@@ -45,8 +47,7 @@ def load_population_df(data,df_type,cre,summary_df=None,first=False,second=False
         extra +='_novelp'
 
     # load summary file
-    path ='/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/'\
-        +df_type+'s/'+data+'/summary_'+cre+extra+'.feather'
+    path = NEURO_DIR+df_type+'s/'+data+'/summary_'+cre+extra+'.feather'
     df = pd.read_feather(path)
 
     # Add columsn from summary_df
@@ -124,8 +125,7 @@ def build_population_df(summary_df,df_type='image_df',cre='Vip-IRES-Cre',
         if batch:
             if np.mod(idx,batch_size) == batch_size-1:
                 temp = pd.concat(dfs, ignore_index=True, sort=False)
-                path = '/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/'\
-                    +df_type+'s/'+data+'/temp_'+experience_level+str(batch_num)+'_'+cre+'.feather'
+                path = NEURO_DIR +df_type+'s/'+data+'/temp_'+experience_level+str(batch_num)+'_'+cre+'.feather'
                 temp.to_feather(path)
                 batch_num+=1
                 dfs = []
@@ -134,15 +134,13 @@ def build_population_df(summary_df,df_type='image_df',cre='Vip-IRES-Cre',
 
     if batch:
         temp = pd.concat(dfs, ignore_index=True, sort=False)
-        path = '/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/'\
-            +df_type+'s/'+data+'/temp_'+experience_level+str(batch_num)+'_'+cre+'.feather'
+        path = NEURO_DIR+df_type+'s/'+data+'/temp_'+experience_level+str(batch_num)+'_'+cre+'.feather'
         temp.to_feather(path)
 
         n = list(range(0,batch_num+1))
         dfs = []
         for i in n:
-            path='/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/'\
-                +df_type+'s/'+data+'/temp_'+experience_level+str(i)+'_'+cre+'.feather'
+            path= NEURO_DIR +df_type+'s/'+data+'/temp_'+experience_level+str(i)+'_'+cre+'.feather'
             temp = pd.read_feather(path)
             dfs.append(temp)
  
@@ -167,8 +165,7 @@ def build_population_df(summary_df,df_type='image_df',cre='Vip-IRES-Cre',
         elif experience_level == "Novel >1":
             extra +='_novelp'
 
-        path = '/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/'\
-            +df_type+'s/'+data+'/summary_'+cre+extra+'.feather'
+        path = NEURO_DIR +df_type+'s/'+data+'/summary_'+cre+extra+'.feather'
         try:
             population_df.to_feather(path)
         except Exception as e:
@@ -332,7 +329,7 @@ def build_response_df_experiment(session,data,first=False,second=False,image=Fal
 
 
 def get_path(cell_id, oeid, filetype,df_type,data,first=False,second=False,image=False):
-    root = '/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/'
+    root = NEURO_DIR 
     if first:
         extra = '_1'
     elif second:
