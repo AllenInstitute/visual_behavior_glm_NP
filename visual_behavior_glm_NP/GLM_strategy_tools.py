@@ -13,6 +13,9 @@ from scipy.stats import linregress
 import seaborn as sns
 from mpl_toolkits.axes_grid1 import Divider, Size
 
+NEURO_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
+
+
 ## General Utilities
 ################################################################################
 
@@ -32,7 +35,7 @@ def add_behavior_session_metrics(df,summary_df):
 
 
 def save_figure(fig,model_version, ymetric, filename):
-    glm_dir = '/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/'
+    glm_dir = NEURO_DIR
     if not os.path.isdir(glm_dir + 'v_'+model_version +'/figures/strategy'):
         os.mkdir(glm_dir + 'v_'+model_version +'/figures/strategy')
     if not os.path.isdir(glm_dir + 'v_'+model_version +'/figures/strategy/'+ymetric):

@@ -7,7 +7,8 @@ import shutil
 
 import visual_behavior.data_access.loading as loading
 
-OUTPUT_DIR_BASE = r'//allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm'
+OUTPUT_DIR_BASE ='/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
+
 
 def get_versions(vrange=[15,20]):
     versions = os.listdir(OUTPUT_DIR_BASE)
@@ -102,7 +103,6 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,u
     job_dir                 = os.path.join(output_dir, 'log_files')
     json_path               = os.path.join(output_dir, 'run_params.json')
     experiment_table_path   = os.path.join(output_dir, 'experiment_table_v_'+str(VERSION)+'.csv')
-    beh_model_dir           = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/behavior/model_output/'
 
     if not update_version:
         os.mkdir(output_dir)
@@ -169,7 +169,6 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,u
         'job_dir':job_dir,
         'manifest':manifest,
         'json_path':json_path,
-        'beh_model_dir':beh_model_dir,
         'version':VERSION,
         'creation_time':str(datetime.datetime.now()),
         'user':username,

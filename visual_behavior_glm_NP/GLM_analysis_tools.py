@@ -17,6 +17,8 @@ import visual_behavior.database as db
 
 from sklearn.decomposition import PCA
 
+NEURO_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
+
 def load_fit_pkl(run_params, ophys_experiment_id):
     '''
         Loads the fit dictionary from the pkl file dumped by fit_experiment.
@@ -612,7 +614,7 @@ def get_glm_version_summary(versions_to_compare=None,vrange=[15,20], compact=Tru
 
     # Save Summary Table
     if save_results:
-       summary_table.to_csv('/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/version_comparisons/summary_table.csv',header=True) 
+       summary_table.to_csv(NEURO_DIR+'version_comparisons/summary_table.csv',header=True) 
 
     return results
 
@@ -1385,7 +1387,7 @@ def select_experiments_for_testing(returns = 'experiment_ids'):
         experiment table for 10 pre-chosen experiments
     '''
 
-    test_experiments = pd.read_csv('/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/experiments_for_testing.csv')
+    test_experiments = pd.read_csv(NEURO_DIR+'experiments_for_testing.csv')
 
     if returns == 'experiment_ids':
         return test_experiments['ophys_experiment_id'].unique()

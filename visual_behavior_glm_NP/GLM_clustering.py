@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import visual_behavior.data_access.loading as loading
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-filedir = '//allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/v_24_events_all_L2_optimize_by_session/figures/clustering/'
+filedir = NEURO_DIR+'v_24_events_all_L2_optimize_by_session/figures/clustering/'
 
 def compare_stats(num_shuffles=1000):
     plt.figure()
@@ -105,7 +105,7 @@ def load_cluster_labels():
     '''
 
     # Load cluster labels
-    filepath = '//allen/programs/braintv/workgroups/nc-ophys/visual_behavior/platform_paper_plots/figure_4/24_events_all_L2_optimize_by_session/220622_across_session_norm_10_5_10/cluster_labels_Vip_10_Sst_5_Slc17a7_10.h5'
+    filepath = NEURO_DIR+'figure_4/24_events_all_L2_optimize_by_session/220622_across_session_norm_10_5_10/cluster_labels_Vip_10_Sst_5_Slc17a7_10.h5'
     df = pd.read_hdf(filepath, key='df')
 
     # load cell data

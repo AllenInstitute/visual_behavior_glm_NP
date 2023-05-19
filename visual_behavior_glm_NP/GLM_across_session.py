@@ -10,12 +10,14 @@ import visual_behavior_glm_NP.GLM_fit_tools as gft
 import visual_behavior_glm_NP.GLM_params as glm_params
 import visual_behavior_glm_NP.GLM_visualization_tools as gvt
 
+NEURO_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
+
 def make_across_run_params(glm_version):
     '''
         Makes a dummy dictionary with the figure directory hard coded
         This is only used as a quick fix for saving figures
     '''
-    figdir = '/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/v_'+glm_version+'/figures/across_session/'
+    figdir = NEURO_DIR+'v_'+glm_version+'/figures/across_session/'
     run_params = {}
     run_params['version'] = glm_version+'_across'
     run_params['figure_dir'] = figdir[:-1]
@@ -116,7 +118,7 @@ def load_cells(glm_version,clean_df=True):
     print('Loading across session normalized dropout scores')
     for cell in tqdm(cells):
         try:
-            filename = '//allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/v_'+glm_version+'/across_session/'+str(cell)+'.csv'
+            filename = NEURO_DIR+'v_'+glm_version+'/across_session/'+str(cell)+'.csv'
             score_df = pd.read_csv(filename)
             score_df['cell_specimen_id'] = cell
             if clean_df:
@@ -185,7 +187,7 @@ def across_session_normalization(cell_specimen_id, glm_version):
     run_params = glm_params.load_run_json(glm_version)
     data = get_across_session_data(run_params,cell_specimen_id)
     score_df = compute_across_session_dropouts(data, run_params, cell_specimen_id)
-    filename = '/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/v_'+glm_version+'/across_session/'+str(cell_specimen_id)+'.csv' 
+    filename = NEURO_DIR+'v_'+glm_version+'/across_session/'+str(cell_specimen_id)+'.csv' 
     score_df.to_csv(filename)
 
     return data, score_df

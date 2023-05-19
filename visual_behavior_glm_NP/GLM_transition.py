@@ -4,13 +4,14 @@ import matplotlib.pyplot as plt
 from statsmodels.stats.proportion import multinomial_proportions_confint as mpc
 
 K = 5 # number of clusters
-FIGURE_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/GLM/clustering_figs/'
+FIGURE_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/clustering_figs/'
+
 
 def load_table():
     '''
         Loads the dataframe of cells and their cluster labels
     '''
-    filepath = '/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/summary_plots/glm/kmeans_glm_novel.hdf'
+    filepath = FIGURE_DIR+'kmeans_glm_novel.hdf'
     df = pd.read_hdf(filepath)
     return df
 

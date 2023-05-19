@@ -28,6 +28,8 @@ import scipy.cluster.hierarchy as sch
 import visual_behavior.visualization.utils as utils
 from sklearn.decomposition import PCA
 
+NEURO_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
+
 def project_colors():
     '''
         Defines a color scheme for various conditions
@@ -803,7 +805,7 @@ def compare_var_explained_by_version(results=None, fig=None, ax=None, test_data=
             extra = extra+"_equipment"
         if sort_by_signal:
             extra = extra+"_by_dff"
-    filepath= '/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/version_comparisons/variance_explained'+extra+'.png'
+    filepath= NEURO_DIR+'version_comparisons/variance_explained'+extra+'.png'
     print(filepath)
     plt.savefig(filepath)
 

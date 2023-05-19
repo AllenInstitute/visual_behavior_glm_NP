@@ -11,6 +11,8 @@ import visual_behavior_glm_NP.GLM_params as glm_params
 import visual_behavior_glm_NP.GLM_analysis_tools as gat
 import visual_behavior_glm_NP.GLM_visualization_tools as gvt
 
+NEURO_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
+
 def strategy_paper_ophys_example(session, cell_id, time):
     
     # Isolate timewindow of interest
@@ -64,7 +66,7 @@ def strategy_paper_ophys_example(session, cell_id, time):
     plt.tight_layout()
     
     # Save figure
-    filename = '/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/figures/ophys_processing_schematic.svg'
+    filename = NEURO_DIR+'figures/ophys_processing_schematic.svg'
     plt.savefig(filename)
     print('Figure saved to: '+filename)
 
@@ -83,7 +85,7 @@ def change_breakdown_schematic(run_params):
     ax.tick_params(axis='x',labelsize=style['fs2'])
     ax.set_yticks([])
     plt.tight_layout()
-    filename = '/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/figures/change_breakdown_schematic.svg'
+    filename = NEURO_DIR+'figures/change_breakdown_schematic.svg'
     print('Figure saved to: '+filename)
     plt.savefig(filename)
 
@@ -102,7 +104,7 @@ def omission_breakdown_schematic(run_params):
     ax.tick_params(axis='x',labelsize=style['fs2'])
     ax.set_yticks([])
     plt.tight_layout()
-    filename = '/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/figures/omission_breakdown_schematic.svg'
+    filename = NEURO_DIR+'figures/omission_breakdown_schematic.svg'
     print('Figure saved to: '+filename)
     plt.savefig(filename)
 
@@ -153,7 +155,7 @@ def plot_glm_example_kernel(g,cell_specimen_id,kernel_names,style,ylims,palette_
     plt.axvspan(0,.25,color='k',alpha=.1)
     plt.ylim(ylims)
     plt.legend()
-    plt.savefig('/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/figures/example_kernels.svg')
+    plt.savefig(NEURO+DIR+'figures/example_kernels.svg')
     
 def plot_glm_example_kernel_inner(g,cell_specimen_id, kernel_name,ax,style,palette_df):
     weight_names = [w for w in g.fit['dropouts']['Full']['train_weights'].weights.values if w.startswith(kernel_name)]
@@ -183,7 +185,7 @@ def plot_glm_example_dropouts(g,cell_specimen_id,style,savefig=False):
     ax.set_xlim(0,1)
     
     if savefig:
-        plt.savefig('/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/figures/example_dropouts.svg')
+        plt.savefig(NEURO_DIR+'figures/example_dropouts.svg')
 
 def get_kernel_duration(kernel, run_params,force_int=False):
     d1 = '('+str(run_params['kernels'][kernel]['offset'])
@@ -296,9 +298,9 @@ def plot_glm_example_inputs(g,times,style,run_params, ax=None, add_stimulus=True
     #plt.tight_layout()
 
     if add_stimulus:
-        filename ='/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/figures/example_inputs_add_stimulus.svg'
+        filename =NEURO_DIR+'figures/example_inputs_add_stimulus.svg'
     else:
-        filename = '/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/figures/example_inputs.svg'
+        filename = NEURO_DIR+'figures/example_inputs.svg'
     if savefig:
         print('Figure saved to: '+filename)
         plt.savefig(filename)
@@ -344,7 +346,7 @@ def plot_glm_example_components(g, cell_specimen_id, times, style):
     ax.tick_params(axis='y',labelsize=style['fs2'])
     ax.set_xlim(times)
     ax.set_ylim(ax.get_ylim()[0]-.05,ymax*1.25)
-    plt.savefig('/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/figures/example_components.svg')
+    plt.savefig(NEURO_DIR+'figures/example_components.svg')
     return ax.get_ylim(),palette_df
 
 def plot_glm_example_trace(g,cell_specimen_id,times,style,include_events=True,ax=None,model=None,savefig=False):
@@ -410,10 +412,10 @@ def plot_glm_example_trace(g,cell_specimen_id,times,style,include_events=True,ax
     #plt.tight_layout()
     
     if model is not None:
-        filename='/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/figures/example_trace_'+model+'.svg'
-        plt.savefig('/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/figures/example_trace_'+model+'.png')
+        filename=NEURO_DIR+'figures/example_trace_'+model+'.svg'
+        plt.savefig(NEURO_DIR+'figures/example_trace_'+model+'.png')
     else:
-        filename='/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/figures/example_trace.svg'
+        filename=NEURO_DIR+'figures/example_trace.svg'
 
     if savefig:
         print('Figure saved to: '+filename)

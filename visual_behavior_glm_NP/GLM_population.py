@@ -10,6 +10,8 @@ import visual_behavior_glm_NP.GLM_strategy_tools as gst
 
 CRE = ['Slc17a7-IRES2-Cre','Sst-IRES-Cre','Vip-IRES-Cre']
 GLM_VERSION = '12_dff_L2_optimize_by_session'
+NEURO_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
+
 # TODO
 # direction arrows on traces
 # need to include error bars on traces
@@ -332,7 +334,7 @@ def add_arrow(line, index,time, size=30):
         size=size)
 
 def save_figure(fig,model_version,filename):
-    glm_dir = '/allen/programs/braintv/workgroups/nc-ophys/visual_behavior/ophys_glm/'
+    glm_dir = NEURO_DIR
     if not os.path.isdir(glm_dir + 'v_'+model_version +'/figures/population'):
         os.mkdir(glm_dir + 'v_'+model_version +'/figures/population')
     plt.savefig(glm_dir + 'v_'+ model_version +'/figures/population/'+filename+".svg")

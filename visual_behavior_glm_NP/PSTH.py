@@ -17,7 +17,7 @@ import visual_behavior_glm_NP.GLM_strategy_tools as gst
 import visual_behavior.data_access.loading as loading
 import visual_behavior.visualization.utils as utils
 
-PSTH_DIR = '/home/alex.piet/codebase/behavior/PSTH/'
+PSTH_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/PSTH/'
 
 def plot_all_heatmaps(dfs, labels,data='events'):
     conditions = dfs[0]['condition'].unique()
