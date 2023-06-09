@@ -7,7 +7,7 @@ from scipy.stats import power_divergence
 from scipy.stats import fisher_exact
 # import FisherExact (Used for non2x2 tables of Fisher Exact test, not used but leaving a note)
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import visual_behavior.data_access.loading as loading
+#import visual_behavior.data_access.loading as loading
 
 filedir = NEURO_DIR+'v_24_events_all_L2_optimize_by_session/figures/clustering/'
 

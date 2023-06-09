@@ -13,7 +13,8 @@ import importlib.util
 import sys
 import os
 import pandas as pd
-import visual_behavior.database as db
+#import visual_behavior.database as db
+import visual_behavior_glm_NP.database as db
 import numpy as np
 
 class GLM(object):

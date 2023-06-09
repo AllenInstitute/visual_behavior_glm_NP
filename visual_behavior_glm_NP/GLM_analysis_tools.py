@@ -12,9 +12,8 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 
+import visual_behavior_glm_NP.database as db
 import visual_behavior_glm_NP.GLM_params as glm_params
-#import visual_behavior.data_access.loading as loading
-#import visual_behavior.database as db
 
 NEURO_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
 
@@ -484,8 +483,7 @@ def get_roi_count(ophys_experiment_id):
     return df['valid_roi'].sum()
 
 def retrieve_results(search_dict={}, results_type='full', return_list=None, 
-    merge_in_experiment_metadata=True,remove_invalid_rois=True,verbose=False,
-    allow_old_rois=True,invalid_only=False,add_extra_columns=False):
+    merge_in_experiment_metadata=True,verbose=False):
 
     '''
     gets cached results from mongodb
@@ -507,7 +505,6 @@ def retrieve_results(search_dict={}, results_type='full', return_list=None,
     output:
         dataframe of results
     '''
-    assert not (invalid_only & remove_invalid_rois), "Cannot remove invalid rois and only return invalid rois"
     
     if return_list is None:
         return_dict = {'_id': 0}
@@ -522,6 +519,7 @@ def retrieve_results(search_dict={}, results_type='full', return_list=None,
     conn = db.Database('visual_behavior_data')
     database = 'ophys_glm'
     results = pd.DataFrame(list(conn[database]['results_{}'.format(results_type)].find(search_dict, return_dict)))
+    cache = glm_params.get_cache()
 
     if verbose:
         print('Done Pulling')
@@ -530,50 +528,24 @@ def retrieve_results(search_dict={}, results_type='full', return_list=None,
         results['glm_version'] = results['glm_version'].astype(str)
     conn.close()
    
-    include_4x2_data=False
     if 'glm_version' in search_dict: 
         run_params = glm_params.load_run_json(search_dict['glm_version'])
-        include_4x2_data = run_params['include_4x2_data']
 
     if len(results) > 0 and merge_in_experiment_metadata:
         if verbose:
             print('Merging in experiment metadata')
         # get experiment table, merge in details of each experiment
-        experiment_table = loading.get_platform_paper_experiment_table(add_extra_columns=add_extra_columns, include_4x2_data=include_4x2_data).reset_index() 
+        experiment_table = glm_params.get_experiment_table()
         results = results.merge(
             experiment_table, 
-            left_on='ophys_experiment_id',
-            right_on='ophys_experiment_id', 
+            left_on='ecephys_session_id',
+            right_on='ecephys_session_id', 
             how='left',
             suffixes=['', '_duplicated'],
         )
         duplicated_cols = [col for col in results.columns if col.endswith('_duplicated')]
         results = results.drop(columns=duplicated_cols)
-    
-    if remove_invalid_rois:
-        # get list of rois I like
-        if verbose:
-            print('Loading cell table to remove invalid rois')
-        if 'cell_roi_id' in results:
-            cell_table = loading.get_cell_table(platform_paper_only=True,add_extra_columns=False,include_4x2_data=include_4x2_data).reset_index() 
-            good_cell_roi_ids = cell_table.cell_roi_id.unique()
-            results = results.query('cell_roi_id in @good_cell_roi_ids')
-        elif allow_old_rois:
-            print('WARNING, cell_roi_id not found in database, I cannot filter for old rois. The returned results could be out of date, or QC failed')
-        else:
-            raise Exception('cell_roi_id not in database, and allow_old_rois=False')
-    elif invalid_only:
-        if verbose:
-            print('Loading cell table to remove valid rois')
-        if 'cell_roi_id' in results:
-            cell_table = loading.get_cell_table(platform_paper_only=True,add_extra_columns=False,include_4x2_data=include_4x2_data).reset_index() 
-            good_cell_roi_ids = cell_table.cell_roi_id.unique()
-            results = results.query('cell_roi_id not in @good_cell_roi_ids')
-        elif allow_old_rois:
-            print('WARNING, cell_roi_id not found in database, I cannot filter for old rois. The returned results could be out of date, or QC failed')
-        else:
-            raise Exception('cell_roi_id not in database, and allow_old_rois=False') 
-    
+       
     if ('variance_explained' in results) and (np.sum(results['variance_explained'].isnull()) > 0):
         print('Warning! Dropout models with NaN variance explained. This shouldn\'t happen')
     elif ('Full__avg_cv_var_test' in results) and (np.sum(results['Full__avg_cv_var_test'].isnull()) > 0):
@@ -1238,8 +1210,7 @@ def inventory_glm_version(glm_version):
     glm_results = retrieve_results(
         search_dict = {'glm_version': glm_version},
         return_list = ['ecephys_session_id', 'unit_id'],
-        merge_in_experiment_metadata=False,
-        remove_invalid_rois=False
+        merge_in_experiment_metadata=False
     )
     #print('Hack! GAT.inventory_glm_version')
     #glm_results = pd.DataFrame()
