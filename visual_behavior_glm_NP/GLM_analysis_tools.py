@@ -531,16 +531,14 @@ def retrieve_results(search_dict={}, results_type='full', return_list=None,
         results['glm_version'] = results['glm_version'].astype(str)
     conn.close()
    
-    include_4x2_data=False
     if 'glm_version' in search_dict: 
         run_params = glm_params.load_run_json(search_dict['glm_version'])
-        include_4x2_data = run_params['include_4x2_data']
 
     if len(results) > 0 and merge_in_experiment_metadata:
         if verbose:
             print('Merging in experiment metadata')
         # get experiment table, merge in details of each experiment
-        experiment_table = loading.get_platform_paper_experiment_table(add_extra_columns=add_extra_columns, include_4x2_data=include_4x2_data).reset_index() 
+        experiment_table = loading.get_platform_paper_experiment_table(add_extra_columns=add_extra_columns).reset_index() 
         results = results.merge(
             experiment_table, 
             left_on='ophys_experiment_id',
@@ -556,7 +554,7 @@ def retrieve_results(search_dict={}, results_type='full', return_list=None,
         if verbose:
             print('Loading cell table to remove invalid rois')
         if 'cell_roi_id' in results:
-            cell_table = loading.get_cell_table(platform_paper_only=True,add_extra_columns=False,include_4x2_data=include_4x2_data).reset_index() 
+            cell_table = loading.get_cell_table(platform_paper_only=True,add_extra_columns=False).reset_index() 
             good_cell_roi_ids = cell_table.cell_roi_id.unique()
             results = results.query('cell_roi_id in @good_cell_roi_ids')
         elif allow_old_rois:
@@ -567,7 +565,7 @@ def retrieve_results(search_dict={}, results_type='full', return_list=None,
         if verbose:
             print('Loading cell table to remove valid rois')
         if 'cell_roi_id' in results:
-            cell_table = loading.get_cell_table(platform_paper_only=True,add_extra_columns=False,include_4x2_data=include_4x2_data).reset_index() 
+            cell_table = loading.get_cell_table(platform_paper_only=True,add_extra_columns=False).reset_index() 
             good_cell_roi_ids = cell_table.cell_roi_id.unique()
             results = results.query('cell_roi_id not in @good_cell_roi_ids')
         elif allow_old_rois:

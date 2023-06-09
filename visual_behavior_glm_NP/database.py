@@ -37,7 +37,7 @@ class Database(object):
         # this will provide flexibility in how the tables are called
         self.database = {}
         self.database_names = []
-        databases = [db for db in self.client.database_names() if db != 'admin']
+        databases = [db for db in self.client.list_database_names() if db != 'admin']
         for db in databases:
             self.database_names.append(db)
             self.database[db] = self.client[db]
