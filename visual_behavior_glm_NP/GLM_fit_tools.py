@@ -19,7 +19,6 @@ from sklearn.linear_model import LassoLarsCV
 from sklearn.linear_model import LassoLars
 from sklearn.linear_model import SGDRegressor
 
-
 import visual_behavior_glm_NP.GLM_analysis_tools as gat
 import visual_behavior.data_access.loading as loading
 import visual_behavior.data_access.reformat as reformat

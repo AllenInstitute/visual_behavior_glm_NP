@@ -9,7 +9,6 @@ import visual_behavior.data_access.loading as loading
 
 OUTPUT_DIR_BASE ='/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
 
-
 def get_versions(vrange=[15,20]):
     versions = os.listdir(OUTPUT_DIR_BASE)
     out_versions = []
