@@ -483,7 +483,10 @@ def get_roi_count(ophys_experiment_id):
     df = db.lims_query(query)
     return df['valid_roi'].sum()
 
-def retrieve_results(search_dict={}, results_type='full', return_list=None, merge_in_experiment_metadata=True,remove_invalid_rois=True,verbose=False,allow_old_rois=True,invalid_only=False,add_extra_columns=False):
+def retrieve_results(search_dict={}, results_type='full', return_list=None, 
+    merge_in_experiment_metadata=True,remove_invalid_rois=True,verbose=False,
+    allow_old_rois=True,invalid_only=False,add_extra_columns=False):
+
     '''
     gets cached results from mongodb
     input:
@@ -1217,12 +1220,9 @@ def inventories_to_table(inventories):
     for version in summary:
         for value in summary[version]:
             summary[version][value] = len(summary[version][value])
-        summary[version]['Complete'] = (summary[version]['missing_experiments'] == 0 ) & (summary[version]['missing_rois'] == 0)
-        #summary[version]['Total Experiments'] = summary[version]['fit_experiments'] + summary[version]['extra_experiments']
-        #summary[version]['Total ROIs'] = summary[version]['fit_rois'] + summary[version]['extra_rois']
+        summary[version]['complete'] = (summary[version]['missing_sessions'] == 0 ) &\
+            (summary[version]['missing_units'] == 0)
     table = pd.DataFrame.from_dict(summary,orient='index')
-    if np.all(table['incomplete_experiments'] == 0):
-        table = table.drop(columns=['incomplete_experiments', 'additional_missing_cells'])
     return table
 
 def inventory_glm_version(glm_version):
@@ -1232,11 +1232,7 @@ def inventory_glm_version(glm_version):
         glm_version: string
         platform_paper_only: bool, if True, only count cells in the platform paper dataset 
     returns: dict
-        {
-            'missing_experiments': a list of missing experiment IDs
-            'missing_rois': a list of missing cell_roi_ids
-            'incomplete_experiments': a list of experiments which exist, but for which the cell_roi_id list is incomplete
-        }
+
     '''
     # Get GLM results
     glm_results = retrieve_results(
@@ -1245,6 +1241,8 @@ def inventory_glm_version(glm_version):
         merge_in_experiment_metadata=False,
         remove_invalid_rois=False
     )
+    #print('Hack! GAT.inventory_glm_version')
+    #glm_results = pd.DataFrame()
     if len(glm_results) == 0:
         # Check for empty results
         glm_results['ecephys_session_id'] = [] 
@@ -1252,7 +1250,7 @@ def inventory_glm_version(glm_version):
  
     # Get list of cells in the dataset
     cache = glm_params.get_cache()
-    cell_table = cache.get_unit_table()
+    cell_table = cache.get_unit_table().reset_index()
 
     # get list of rois and experiments we have fit
     total_sessions = glm_results['ecephys_session_id'].unique()
@@ -1270,7 +1268,7 @@ def inventory_glm_version(glm_version):
 
     # get list of missing sessions
     missing_sessions = list(
-        set(cell_table[' ecephys_session_id'].unique()) - 
+        set(cell_table['ecephys_session_id'].unique()) - 
         set(glm_results['ecephys_session_id'].unique())
     )
 
@@ -1285,8 +1283,8 @@ def inventory_glm_version(glm_version):
         'fit_units':fit_units,
         'missing_sessions': missing_sessions,
         'missing_units': missing_units,
-        'Total Experiments':total_sessions,
-        'Total units':total_units
+        'total sessions':total_sessions,
+        'total units':total_units
         }
     
     return inventory
