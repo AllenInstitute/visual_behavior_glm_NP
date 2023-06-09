@@ -10,12 +10,11 @@ import seaborn as sns
 import xarray_mongodb
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 
 import visual_behavior_glm_NP.GLM_params as glm_params
 import visual_behavior.data_access.loading as loading
 import visual_behavior.database as db
-
-from sklearn.decomposition import PCA
 
 NEURO_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
 
