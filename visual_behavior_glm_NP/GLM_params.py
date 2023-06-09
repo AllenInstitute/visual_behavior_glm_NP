@@ -207,6 +207,7 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,
         'image_kernel_overlap_tol':5,   # Number of timesteps image kernels are allowed to overlap during entire session.
         'dropout_threshold':0.005,      # Minimum variance explained by full model
         'version_type':'production',      # Should be either 'production' (run everything), 'standard' (run standard dropouts), 'minimal' (just full model)
+        'active': True,                 # Are we fitting the active behavior (True) or passive (False)
     } 
 
     # Define Kernels and dropouts
