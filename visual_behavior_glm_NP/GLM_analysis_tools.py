@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 
 import visual_behavior_glm_NP.GLM_params as glm_params
-import visual_behavior.data_access.loading as loading
-import visual_behavior.database as db
+#import visual_behavior.data_access.loading as loading
+#import visual_behavior.database as db
 
 NEURO_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
 
@@ -732,36 +732,6 @@ def summarize_variance_explained(results=None):
         results = results_dict['full']
     return results.groupby(['glm_version','cre_line'])['Full_avg_cv_var_test'].describe()
 
-
-def get_experiment_inventory(results=None):
-    '''
-    adds a column to the experiments table for every GLM version called 'glm_version_{GLM_VERSION}_exists'
-    column is boolean (True if experiment successfully fit for that version, False otherwise)
-    '''
-    raise Exception('Outdated, do not use')
-    def oeid_in_results(oeid, version):
-        try:
-            res = results['full'].loc[oeid]['glm_version']
-            if isinstance(res, str):
-                return version == res
-            else:
-                return version in res.unique()
-        except KeyError:
-            return False
-
-    if results is None:
-        results_dict = retrieve_results()
-        results = results_dict['full']
-    results = results.set_index(['ophys_experiment_id'])
-    
-    experiments_table = loading.get_platform_paper_experiment_table(add_extra_columns=False,include_4x2_data=False)
-
-    for glm_version in results['glm_version'].unique():
-        for oeid in experiments_table.index.values:
-            experiments_table.at[oeid, 'glm_version_{}_exists'.format(glm_version)] = oeid_in_results(oeid, glm_version)
-
-    return experiments_table
-
 def run_pca(dropout_matrix, n_components=40, deal_with_nans='fill_with_zero'):
     '''
     wrapper function for PCA
@@ -1224,7 +1194,7 @@ def clean_glm_dropout_scores(results_pivoted, run_params, in_session_numbers=Non
 
     return results_pivoted_var
           
-def build_inventory_table(vrange=[18,20],return_inventories=False):
+def build_inventory_table(vrange=[100,120],return_inventories=False):
     '''
         Builds a table of all available GLM versions in the supplied range, and reports how many missing/fit experiments/rois in that version
         
