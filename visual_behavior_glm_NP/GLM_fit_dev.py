@@ -9,26 +9,39 @@ import visual_behavior_glm_NP.GLM_analysis_tools as gat
 import visual_behavior_glm_NP.GLM_schematic_plots as gsm
 import visual_behavior_glm_NP.GLM_fit_tools as gft
 
+if False:
+    # Make run JSON
+    #####################
+    VERSION = 100
+    src_path = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/visual_behavior_glm_NP/' 
+    glm_params.make_run_json(
+        VERSION,
+        label='testing',
+        username='alex', 
+        src_path = src_path, 
+        TESTING=False
+        )
+
 # These functions are useful for quickly wrapping the underlying data streams
 # into the glm object, because some analysis functions want the glm object
-class dummy_glm:
-    a = 'dummy glm'
+#class dummy_glm:
+#    a = 'dummy glm'
 
-def make_dummy_glm(fit, run_params, design, session):
-    g = type('dummy_glm',(object,),dict(a='dummy glm'))
-    g.fit=fit
-    g.run_params=run_params
-    g.design=design
-    g.session=session
-    return g
+#def make_dummy_glm(fit, run_params, design, session):
+#    g = type('dummy_glm',(object,),dict(a='dummy glm'))
+#    g.fit=fit
+#    g.run_params=run_params
+#    g.design=design
+#    g.session=session
+#    return g
 
-def make_glm(fit, run_params, design, session):
-    g = GLM(session.metadata['ophys_experiment_id'],run_params['version'], 
-        log_results=False, log_weights=False, recompute=False, 
-        use_inputs=True, inputs=[session, fit, design]
-        )
-    g.run_params = run_params
-    return g
+#def make_glm(fit, run_params, design, session):
+#    g = GLM(session.metadata['ophys_experiment_id'],run_params['version'], 
+#        log_results=False, log_weights=False, recompute=False, 
+#        use_inputs=True, inputs=[session, fit, design]
+#        )
+#    g.run_params = run_params
+#    return g
 
 if False: # Code snippets for doing analyses. 
     # Experiments for debugging consistency
@@ -38,22 +51,6 @@ if False: # Code snippets for doing analyses.
     oeid1 = experiment_table.index.values[0]
     oeid2 = experiment_table.index.values[154]
     oeid3 = experiment_table.index.values[-1]
-
-
-    # Make run JSON
-    #####################
-    VERSION = 1
-    src_path = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/GLM/visual_behavior_glm_NP/' 
-    glm_params.make_run_json(
-        VERSION,
-        label='testing',
-        username='alex', 
-        src_path = src_path, 
-        TESTING=True,
-        include_4x2_data=False
-        )
-   
-
 
     # Import code from a specific version
     #####################

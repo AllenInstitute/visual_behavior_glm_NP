@@ -4,12 +4,16 @@ import numpy as np
 from copy import copy
 import datetime
 import shutil
+from pathlib import Path
 
-import visual_behavior.data_access.loading as loading
+from allensdk.brain_observatory.behavior.behavior_project_cache import \
+    VisualBehaviorNeuropixelsProjectCache
+
+#import visual_behavior.data_access.loading as loading
 
 OUTPUT_DIR_BASE ='/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
 
-def get_versions(vrange=[15,20]):
+def get_versions(vrange=[100,110]):
     versions = os.listdir(OUTPUT_DIR_BASE)
     out_versions = []
     for dex, val in enumerate(np.arange(vrange[0],vrange[1])):
@@ -53,22 +57,22 @@ def define_kernels():
 
     return kernels
 
+def get_cache():
+    cache_dir = '/allen/programs/mindscope/workgroups/np-behavior/vbn_data_release/vbn_s3_cache/'
+    cache = VisualBehaviorNeuropixelsProjectCache.from_s3_cache(cache_dir=Path(cache_dir))
+    return cache
 
-def get_experiment_table(require_model_outputs = False,include_4x2_data=False):
-    """
-    get a list of filtered experiments and associated attributes
-    returns only experiments that have relevant project codes and have passed QC
+def get_experiment_table():
+    '''
+        Returns a dataframe of the NP sessions
+    '''
+    cache = get_cache()
+    np_table = cache.get_ecephys_session_table(filter_abnormalities=False)
+    np_table = np_table.sort_index()
+    return np_table
 
-    Keyword arguments:
-    require_model_outputs (bool) -- if True, limits returned experiments to those that have been fit with behavior model
-    """
-    experiments_table = loading.get_platform_paper_experiment_table(include_4x2_data=include_4x2_data) 
-    if require_model_outputs:
-        return experiments_table.query('model_outputs_available == True')
-    else:
-        return experiments_table
-
-def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,update_version=False,include_4x2_data=False):
+def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,
+    update_version=False):
     '''
         Freezes model files, parameters, and ophys experiment ids
         If the model iteration already exists, throws an error unless (update_version=True)
@@ -80,8 +84,9 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,u
         ./README.txt            contains information about the model creation
         ./run_params.json       contains a dictionary of the model parameters
 
-        <username>  include a string to README.txt who created each model iteration. If none is provided
-                    attempts to load linux username. Will default to "unknown" on error
+        <username>  include a string to README.txt who created each model iteration. 
+                    If none is provided attempts to load linux username. 
+                    Will default to "unknown" on error
         <label>     include a string to README.txt with a brief summary of the model iteration
         <src_path>  path to repo home. Will throw an error if not passed in
         <TESTING>   if true, will only include 5 sessions in the experiment list
@@ -93,8 +98,6 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,u
     figure_dir              = os.path.join(output_dir, 'figures')
     fig_coding_dir          = os.path.join(figure_dir, 'coding')
     fig_kernels_dir         = os.path.join(figure_dir, 'kernels')
-    fig_overfitting_dir     = os.path.join(figure_dir, 'over_fitting_figures')
-    fig_clustering_dir      = os.path.join(figure_dir, 'clustering')
     model_freeze_dir        = os.path.join(output_dir, 'frozen_model_files')
     experiment_output_dir   = os.path.join(output_dir, 'experiment_model_files')
     manifest_dir            = os.path.join(output_dir, 'manifest')
@@ -108,8 +111,6 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,u
         os.mkdir(figure_dir)
         os.mkdir(fig_coding_dir)
         os.mkdir(fig_kernels_dir)
-        os.mkdir(fig_overfitting_dir)
-        os.mkdir(fig_clustering_dir)
         os.mkdir(model_freeze_dir)
         os.mkdir(experiment_output_dir)
         os.mkdir(job_dir)
@@ -143,7 +144,7 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,u
     
 
     # Define list of experiments to fit
-    experiment_table = get_experiment_table(include_4x2_data=include_4x2_data)
+    experiment_table = get_experiment_table()
     if TESTING:
         experiment_table = experiment_table.tail(5)
     experiment_table.to_csv(experiment_table_path)
@@ -161,8 +162,6 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,u
         'figure_dir':figure_dir,
         'fig_coding_dir':fig_coding_dir,
         'fig_kernels_dir':fig_kernels_dir,    
-        'fig_overfitting_dir':fig_overfitting_dir,
-        'fig_clustering_dir':fig_clustering_dir,
         'model_freeze_dir':model_freeze_dir,            
         'experiment_output_dir':experiment_output_dir,
         'job_dir':job_dir,
@@ -208,7 +207,6 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,u
         'image_kernel_overlap_tol':5,   # Number of timesteps image kernels are allowed to overlap during entire session.
         'dropout_threshold':0.005,      # Minimum variance explained by full model
         'version_type':'production',      # Should be either 'production' (run everything), 'standard' (run standard dropouts), 'minimal' (just full model)
-        'include_4x2_data':include_4x2_data,# If True, fits mesoscope 4 areas x 2 depth data
     } 
 
     # Define Kernels and dropouts
@@ -318,12 +316,6 @@ def define_dropouts(kernels,run_params):
             dropout_definitions['post-task']=           ['post-hits','post-misses','post-passive_change']
             dropout_definitions['task']=                ['hits','misses','passive_change']
             dropout_definitions['all-task']=            ['hits','misses','passive_change','post-hits','post-misses','post-passive_change']
-
-        # Add all face_motion_energy individual kernels to behavioral, and as a group model
-        # Number of PCs is variable, so we have to treat it differently
-        if 'face_motion_PC_0' in kernels:
-            dropout_definitions['face_motion_energy'] = [kernel for kernel in list(kernels.keys()) if kernel.startswith('face_motion')] 
-            dropout_definitions['behavioral']=dropout_definitions['behavioral']+dropout_definitions['face_motion_energy']   
         
         # For each nested model, move the appropriate kernels to the dropped_kernel list
         for dropout_name in dropout_definitions:
@@ -348,6 +340,7 @@ def define_dropouts(kernels,run_params):
         assert len(dropouts[drop]['kernels']) + len(dropouts[drop]['dropped_kernels']) == len(dropouts['Full']['kernels']), 'bad length'
 
     return dropouts
+
     
 def set_up_dropouts(dropouts,kernels,dropout_name, kernel_list):
     '''
@@ -379,68 +372,6 @@ def load_run_json(version):
 
         run_params = json.load(json_file)
 
-    # Backwards compatability
-    # Check for figure directory, and append if not included
-    if 'figure_dir' not in run_params:
-        run_params['figure_dir'] = os.path.join(run_params['output_dir'], 'figures')
-    if 'fig_coding_dir' not in run_params:
-        run_params['fig_coding_dir']     = os.path.join(run_params['figure_dir'], 'coding')
-        run_params['fig_kernels_dir']    = os.path.join(run_params['figure_dir'], 'kernels')               
-        run_params['fig_overfitting_dir']= os.path.join(run_params['figure_dir'], 'over_fitting_figures')
-        run_params['fig_clustering_dir'] = os.path.join(run_params['figure_dir'], 'clustering')
-    if 'include_4x2_data' not in run_params:
-        run_params['include_4x2_data'] = False
     return run_params
 
-def describe_model_version(version):
-    '''
-        Prints a text description of the model kernels and dropouts. Tries to load the information from v_7_L2_optimize_by_session_
-    '''
-    run_params = load_run_json(version)
-    just_for_text = load_run_json('7_L2_optimize_by_session')   
 
-    print('\nThe model contains the following kernels:') 
-    for kernel in run_params['kernels']:
-        if 'text' in run_params['kernels'][kernel]:
-            text = run_params['kernels'][kernel]['text']       
-        else:
-            if kernel not in just_for_text['kernels']:
-                text = 'no description available'
-            else:
-                text = just_for_text['kernels'][kernel]['text']              
-        if run_params['kernels'][kernel]['type'] == 'discrete':
-            start = np.round(run_params['kernels'][kernel]['offset'],2)
-            end  = np.round(run_params['kernels'][kernel]['length'] + start,1)
-            print(kernel.ljust(18) + " is aligned from ("+str(start)+", "+str(end)+") seconds around each "+text)
-        else:
-            print(kernel.ljust(18) + " runs the full length of the session, and is "+ text)
-    
-    print('\nThe model contains the following dropout, or reduced models:') 
-
-    for d in run_params['dropouts']:
-        if 'is_single' in run_params['dropouts'][d]:
-            is_single=run_params['dropouts'][d]['is_single']
-        elif d in just_for_text['dropouts'][d]:
-            is_single=just_for_text['dropouts'][d]['is_single']
-        else:
-            is_single=False
-        if is_single:
-            k = run_params['dropouts'][d]['kernels']
-            if 'intercept' in k:
-                k.remove('intercept')
-            if len(k) > 1:
-                print(d.ljust(25) +" contains just the kernels "+ ', '.join(k))
-            else:
-                print(d.ljust(25) +" contains just the kernel "+ ', '.join(k))   
-        else:
-            if 'dropped_kernels' in run_params['dropouts'][d]:
-                drops = run_params['dropouts'][d]['dropped_kernels']
-            elif d in just_for_text['dropouts']:
-                drops = just_for_text['dropouts'][d]['dropped_kernels']
-            else:
-                drops = ['?']
-            if len(drops) == 0:
-                print(d.ljust(25) +" contains all kernels")     
-            else:
-                print(d.ljust(25) +" contains all kernels except "+', '.join(drops))    
- 
