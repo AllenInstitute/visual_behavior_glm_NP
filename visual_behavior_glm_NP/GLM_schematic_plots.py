@@ -5,7 +5,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import visual_behavior.plotting as vbp
+#import visual_behavior.plotting as vbp
 from mpl_toolkits.axes_grid1 import Divider, Size
 import visual_behavior_glm_NP.GLM_params as glm_params
 import visual_behavior_glm_NP.GLM_analysis_tools as gat

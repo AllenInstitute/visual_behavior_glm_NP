@@ -1,13 +1,14 @@
-import visual_behavior.plotting as vbp
-import visual_behavior.utilities as vbu
-import visual_behavior.data_access.utilities as utilities
-import visual_behavior.data_access.loading as loading
+#import visual_behavior.plotting as vbp
+#import visual_behavior.utilities as vbu
+#import visual_behavior.data_access.utilities as utilities
+#import visual_behavior.data_access.loading as loading
 import visual_behavior_glm_NP.GLM_analysis_tools as gat
 import visual_behavior_glm_NP.GLM_params as glm_params
 from mpl_toolkits.axes_grid1 import Divider, Size
 
 import copy
-import visual_behavior.database as db
+#import visual_behavior.database as db
+import visual_behavior_glm_NP.database as db
 import matplotlib as mpl
 import seaborn as sns
 import scipy
@@ -25,7 +26,7 @@ from scipy import ndimage
 from scipy import stats
 import statsmodels.stats.multicomp as mc
 import scipy.cluster.hierarchy as sch
-import visual_behavior.visualization.utils as utils
+#import visual_behavior.visualization.utils as utils
 from sklearn.decomposition import PCA
 
 NEURO_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'

@@ -7,7 +7,7 @@ from sklearn.linear_model import LinearRegression
 
 import visual_behavior_glm_NP.GLM_params as glm_params
 import visual_behavior_glm_NP.GLM_visualization_tools as gvt
-import visual_behavior.ophys.response_analysis.cell_metrics as cell_metrics
+#import visual_behavior.ophys.response_analysis.cell_metrics as cell_metrics
 
 def compute_event_metrics(results_pivoted,run_params,groups=['cre_line','equipment','targeted_structure','experience_level'],threshold=0,savefig=False):
     if threshold !=0:
