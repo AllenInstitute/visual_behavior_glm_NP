@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 
 import visual_behavior_glm_NP.GLM_params as glm_params
-import visual_behavior.data_access.loading as loading
-import visual_behavior.database as db
+#import visual_behavior.data_access.loading as loading
+#import visual_behavior.database as db
 
 NEURO_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
 
@@ -483,7 +483,10 @@ def get_roi_count(ophys_experiment_id):
     df = db.lims_query(query)
     return df['valid_roi'].sum()
 
-def retrieve_results(search_dict={}, results_type='full', return_list=None, merge_in_experiment_metadata=True,remove_invalid_rois=True,verbose=False,allow_old_rois=True,invalid_only=False,add_extra_columns=False):
+def retrieve_results(search_dict={}, results_type='full', return_list=None, 
+    merge_in_experiment_metadata=True,remove_invalid_rois=True,verbose=False,
+    allow_old_rois=True,invalid_only=False,add_extra_columns=False):
+
     '''
     gets cached results from mongodb
     input:
@@ -731,36 +734,6 @@ def summarize_variance_explained(results=None):
         results_dict = retrieve_results()
         results = results_dict['full']
     return results.groupby(['glm_version','cre_line'])['Full_avg_cv_var_test'].describe()
-
-
-def get_experiment_inventory(results=None):
-    '''
-    adds a column to the experiments table for every GLM version called 'glm_version_{GLM_VERSION}_exists'
-    column is boolean (True if experiment successfully fit for that version, False otherwise)
-    '''
-    raise Exception('Outdated, do not use')
-    def oeid_in_results(oeid, version):
-        try:
-            res = results['full'].loc[oeid]['glm_version']
-            if isinstance(res, str):
-                return version == res
-            else:
-                return version in res.unique()
-        except KeyError:
-            return False
-
-    if results is None:
-        results_dict = retrieve_results()
-        results = results_dict['full']
-    results = results.set_index(['ophys_experiment_id'])
-    
-    experiments_table = loading.get_platform_paper_experiment_table(add_extra_columns=False,include_4x2_data=False)
-
-    for glm_version in results['glm_version'].unique():
-        for oeid in experiments_table.index.values:
-            experiments_table.at[oeid, 'glm_version_{}_exists'.format(glm_version)] = oeid_in_results(oeid, glm_version)
-
-    return experiments_table
 
 def run_pca(dropout_matrix, n_components=40, deal_with_nans='fill_with_zero'):
     '''
@@ -1224,7 +1197,7 @@ def clean_glm_dropout_scores(results_pivoted, run_params, in_session_numbers=Non
 
     return results_pivoted_var
           
-def build_inventory_table(vrange=[18,20],return_inventories=False):
+def build_inventory_table(vrange=[100,120],return_inventories=False):
     '''
         Builds a table of all available GLM versions in the supplied range, and reports how many missing/fit experiments/rois in that version
         
@@ -1247,115 +1220,71 @@ def inventories_to_table(inventories):
     for version in summary:
         for value in summary[version]:
             summary[version][value] = len(summary[version][value])
-        summary[version]['Complete'] = (summary[version]['missing_experiments'] == 0 ) & (summary[version]['missing_rois'] == 0)
-        #summary[version]['Total Experiments'] = summary[version]['fit_experiments'] + summary[version]['extra_experiments']
-        #summary[version]['Total ROIs'] = summary[version]['fit_rois'] + summary[version]['extra_rois']
+        summary[version]['complete'] = (summary[version]['missing_sessions'] == 0 ) &\
+            (summary[version]['missing_units'] == 0)
     table = pd.DataFrame.from_dict(summary,orient='index')
-    if np.all(table['incomplete_experiments'] == 0):
-        table = table.drop(columns=['incomplete_experiments', 'additional_missing_cells'])
     return table
 
-def inventory_glm_version(glm_version, valid_rois_only=True, platform_paper_only=True):
+def inventory_glm_version(glm_version):
     '''
     checks to see which experiments and cell_roi_ids do not yet exist for a given GLM version
     inputs:
         glm_version: string
         platform_paper_only: bool, if True, only count cells in the platform paper dataset 
     returns: dict
-        {
-            'missing_experiments': a list of missing experiment IDs
-            'missing_rois': a list of missing cell_roi_ids
-            'incomplete_experiments': a list of experiments which exist, but for which the cell_roi_id list is incomplete
-        }
+
     '''
     # Get GLM results
     glm_results = retrieve_results(
         search_dict = {'glm_version': glm_version},
-        return_list = ['ophys_experiment_id', 'cell_specimen_id', 'cell_roi_id'],
+        return_list = ['ecephys_session_id', 'unit_id'],
         merge_in_experiment_metadata=False,
         remove_invalid_rois=False
     )
+    #print('Hack! GAT.inventory_glm_version')
+    #glm_results = pd.DataFrame()
     if len(glm_results) == 0:
         # Check for empty results
-        glm_results['ophys_experiment_id'] = [] 
-        glm_results['cell_specimen_id'] = [] 
-        glm_results['cell_roi_id'] = [] 
-
-    # determine if we need to get 4x2 data for this version
-    include_4x2_data=False
-    run_params = glm_params.load_run_json(glm_version)
-    include_4x2_data = run_params['include_4x2_data']
+        glm_results['ecephys_session_id'] = [] 
+        glm_results['unit_id'] = [] 
  
     # Get list of cells in the dataset
-    cell_table = loading.get_cell_table(platform_paper_only=platform_paper_only,add_extra_columns=False,include_4x2_data=include_4x2_data).reset_index()
+    cache = glm_params.get_cache()
+    cell_table = cache.get_unit_table().reset_index()
 
     # get list of rois and experiments we have fit
-    total_experiments = glm_results['ophys_experiment_id'].unique()
-    total_rois = glm_results['cell_roi_id'].unique()
+    total_sessions = glm_results['ecephys_session_id'].unique()
+    total_units = glm_results['unit_id'].unique()
 
-    # Compute list of rois and experiments that we have fit that are in the dataset
-    fit_experiments = list(
-        set(cell_table['ophys_experiment_id'].unique()) &
-        set(glm_results['ophys_experiment_id'].unique())
+    # Compute list of units and sessions that we have fit that are in the dataset
+    fit_sessions = list(
+        set(cell_table['ecephys_session_id'].unique()) &
+        set(glm_results['ecephys_session_id'].unique())
     )
-    fit_rois = list(
-        set(cell_table['cell_roi_id'].unique()) &
-        set(glm_results['cell_roi_id'].unique())
-    )
-
-    # get list of missing experiments
-    missing_experiments = list(
-        set(cell_table['ophys_experiment_id'].unique()) - 
-        set(glm_results['ophys_experiment_id'].unique())
+    fit_units = list(
+        set(cell_table['unit_id'].unique()) &
+        set(glm_results['unit_id'].unique())
     )
 
-    # get list of missing rois
-    missing_rois = list(
-        set(cell_table['cell_roi_id'].unique()) - 
-        set(glm_results['cell_roi_id'].unique())
+    # get list of missing sessions
+    missing_sessions = list(
+        set(cell_table['ecephys_session_id'].unique()) - 
+        set(glm_results['ecephys_session_id'].unique())
     )
 
-    # Extra experiments, these could be old experiments that have since been failed, or out of scope experiments
-    extra_experiments = list(
-        set(glm_results['ophys_experiment_id'].unique()) - 
-        set(cell_table['ophys_experiment_id'].unique())
+    # get list of missing units
+    missing_units = list(
+        set(cell_table['unit_id'].unique()) - 
+        set(glm_results['unit_id'].unique())
     )
-
-    # get list of extra rois
-    extra_rois = list(
-        set(glm_results['cell_roi_id'].unique()) - 
-        set(cell_table['cell_roi_id'].unique())
-    )
-
-    # get any experiments for which the ROI count is incomplete. These are 'incomplete_experiments'
-    if valid_rois_only==True:
-        incomplete_experiments = set()
-        additional_missing_cells = list(
-            set(cell_table.query('ophys_experiment_id in {}'.format(list(glm_results['ophys_experiment_id'].unique())))['cell_roi_id']) - 
-            set(glm_results['cell_roi_id'])
-        )
-        for missing_cell in additional_missing_cells:
-            associated_oeid = cell_table.query('cell_roi_id == @missing_cell').iloc[0]['ophys_experiment_id']
-            incomplete_experiments.add(associated_oeid)
-        incomplete_experiments = list(incomplete_experiments)
-        if len(incomplete_experiments) !=0:
-            print('WARNING, incomplete experiments found. This indicates a big data problem, possibly indicating outdated cell segmentation')
-    else:
-        print('WARNING, ignoring incomplete experiments because valid_rois_only=True')
-        incomplete_experiments=[]
-        additional_missing_cells=[]
 
     inventory = {
-        'fit_experiments': fit_experiments,
-        'fit_rois':fit_rois,
-        'missing_experiments': missing_experiments,
-        'missing_rois': missing_rois,
-        'extra_experiments': extra_experiments,
-        'extra_rois': extra_rois,
-        'incomplete_experiments': incomplete_experiments,
-        'additional_missing_cells':additional_missing_cells,
-        'Total Experiments':total_experiments,
-        'Total ROIs':total_rois
+        'fit_sessions': fit_sessions,
+        'fit_units':fit_units,
+        'missing_sessions': missing_sessions,
+        'missing_units': missing_units,
+        'total sessions':total_sessions,
+        'total units':total_units
         }
     
     return inventory
