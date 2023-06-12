@@ -71,6 +71,30 @@ def get_experiment_table():
     np_table = np_table.sort_index()
     return np_table
 
+def get_unit_table():
+    cache = get_cache()
+    cell_table = cache.get_unit_table().reset_index()
+    
+    # A rough filter for good units
+    cell_table['good_unit'] =   (cell_table['presence_ratio'] > 0.5)&\
+                                (cell_table['amplitude_cutoff']<0.5)
+    return cell_table
+
+def get_master_unit_table():
+    '''
+        This is an internal unit table with extra columns. I'm going to try to limit how much I 
+        use it so things are maximally accessible for external users. 
+    '''
+    filename = '/allen/programs/mindscope/workgroups/np-behavior/vbn_data_release/supplemental_tables/master_unit_table.csv'
+    cell_table = pd.read_csv(filename)
+
+    # A rough filter for good units
+    cell_table['good_unit'] =   (cell_table['presence_ratio'] > 0.5)&\
+                                (cell_table['amplitude_cutoff']<0.5)&\
+                                (cell_table['quality'] == "good")
+
+    return cell_table
+
 def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,
     update_version=False):
     '''

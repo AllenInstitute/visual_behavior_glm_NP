@@ -1212,16 +1212,14 @@ def inventory_glm_version(glm_version):
         return_list = ['ecephys_session_id', 'unit_id'],
         merge_in_experiment_metadata=False
     )
-    #print('Hack! GAT.inventory_glm_version')
-    #glm_results = pd.DataFrame()
+
     if len(glm_results) == 0:
         # Check for empty results
         glm_results['ecephys_session_id'] = [] 
         glm_results['unit_id'] = [] 
  
     # Get list of cells in the dataset
-    cache = glm_params.get_cache()
-    cell_table = cache.get_unit_table().reset_index()
+    cell_table = glm_params.get_unit_table()
 
     # get list of rois and experiments we have fit
     total_sessions = glm_results['ecephys_session_id'].unique()

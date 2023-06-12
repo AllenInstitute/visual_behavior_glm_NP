@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from visual_behavior_glm_NP.glm import GLM
-
 import visual_behavior_glm_NP.GLM_params as glm_params
 import visual_behavior_glm_NP.GLM_visualization_tools as gvt
 import visual_behavior_glm_NP.GLM_analysis_tools as gat
