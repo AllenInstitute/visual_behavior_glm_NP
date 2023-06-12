@@ -21,6 +21,20 @@ if False:
         TESTING=False
         )
 
+    # Get data information
+    cache = glm_params.get_cache()
+    experiment_table = glm_params.get_experiment_table()
+    unit_table = glm_params.get_unit_table()
+    master_unit_table = glm_params.get_master_unit_table()
+    
+    # Get model information
+    run_params = glm_params.load_run_json(version)
+    inventory_table = gat.build_inventory_table()
+
+
+### DEV BELOW HERE
+
+if False: # Code snippets for doing analyses. 
 # These functions are useful for quickly wrapping the underlying data streams
 # into the glm object, because some analysis functions want the glm object
 #class dummy_glm:
@@ -42,14 +56,6 @@ if False:
 #    g.run_params = run_params
 #    return g
 
-if False: # Code snippets for doing analyses. 
-    # Experiments for debugging consistency
-    #####################
-    experiment_table = glm_params.get_experiment_table()
-    oeid  = experiment_table.index.values[754]
-    oeid1 = experiment_table.index.values[0]
-    oeid2 = experiment_table.index.values[154]
-    oeid3 = experiment_table.index.values[-1]
 
     # Import code from a specific version
     #####################
@@ -62,7 +68,6 @@ if False: # Code snippets for doing analyses.
     gft = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = gft
     spec.loader.exec_module(gft)
-
 
 
     # Fit Model
