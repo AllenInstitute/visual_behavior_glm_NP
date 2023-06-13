@@ -47,11 +47,11 @@ def load_fit_pkl(run_params, ophys_experiment_id):
 
 def log_error(error_dict, keys_to_check = []):
     '''
-    logs contents of error_dict to the `error_logs` collection in the `ophys_glm` mongo database
+    logs contents of error_dict to the `error_logs` collection in the `np_glm` mongo database
     '''
     conn=db.Database('visual_behavior_data') #establishes connection
     db.update_or_create(
-        collection = conn['ophys_glm']['error_logs'],
+        collection = conn['np_glm']['error_logs'],
         document = db.clean_and_timestamp(error_dict),
         keys_to_check = keys_to_check, # keys to check to determine whether an entry already exists. Overwrites if an entry is found with matching keys
     )
@@ -63,7 +63,7 @@ def get_error_log(search_dict = {}):
     if search dict is an empty dict (default), it will return full contents of the kernel_error_log collection
     '''
     conn=db.Database('visual_behavior_data') #establishes connection
-    result = conn['ophys_glm']['error_logs'].find(search_dict)
+    result = conn['np_glm']['error_logs'].find(search_dict)
     conn.close()
     return pd.DataFrame(list(result))
 
@@ -272,7 +272,7 @@ def already_fit(oeid, version):
     returns a boolean
     '''
     conn = db.Database('visual_behavior_data')
-    coll = conn['ophys_glm']['weight_matrix_lookup_table']
+    coll = conn['np_glm']['weight_matrix_lookup_table']
     document_count = coll.count_documents({'ophys_experiment_id':int(oeid), 'glm_version':str(version)})
     conn.close()
     return document_count > 0
@@ -303,7 +303,7 @@ def log_results_to_mongo(glm):
     }
 
     for df,collection in zip([full_results, results_summary], ['results_full','results_summary']):
-        coll = conn['ophys_glm'][collection]
+        coll = conn['np_glm'][collection]
 
         for idx,row in df.iterrows():
             entry = row.to_dict()
@@ -316,11 +316,11 @@ def log_results_to_mongo(glm):
 
 def xarray_to_mongo(xarray):
     '''
-    writes xarray to the 'ophys_glm_xarrays' database in mongo
-    returns _id of xarray in the 'ophys_glm_xarrays' database
+    writes xarray to the 'np_glm_xarrays' database in mongo
+    returns _id of xarray in the 'np_glm_xarrays' database
     '''
     conn = db.Database('visual_behavior_data')
-    w_matrix_database = conn['ophys_glm_xarrays']
+    w_matrix_database = conn['np_glm_xarrays']
     xdb = xarray_mongodb.XarrayMongoDB(w_matrix_database)
     _id, _ = xdb.put(xarray)
     return _id
@@ -335,8 +335,8 @@ def get_weights_matrix_from_mongo(ophys_experiment_id, glm_version):
         'ophys_experiment_id':ophys_experiment_id,
         'glm_version':glm_version,
     }
-    w_matrix_lookup_table = conn['ophys_glm']['weight_matrix_lookup_table']
-    w_matrix_database = conn['ophys_glm_xarrays']
+    w_matrix_lookup_table = conn['np_glm']['weight_matrix_lookup_table']
+    w_matrix_database = conn['np_glm_xarrays']
 
     if w_matrix_lookup_table.count_documents(lookup_table_document) == 0:
         warnings.warn('there is no record of a the weights matrix for oeid {}, glm_version {}'.format(ophys_experiment_id, glm_version))
@@ -369,8 +369,8 @@ def log_weights_matrix_to_mongo(glm):
         'ophys_experiment_id':int(glm.ophys_experiment_id),
         'glm_version':glm.version,
     }
-    w_matrix_lookup_table = conn['ophys_glm']['weight_matrix_lookup_table']
-    w_matrix_database = conn['ophys_glm_xarrays']
+    w_matrix_lookup_table = conn['np_glm']['weight_matrix_lookup_table']
+    w_matrix_database = conn['np_glm_xarrays']
 
     if w_matrix_lookup_table.count_documents(lookup_table_document) >= 1:
         # if weights matrix for this experiment/version has already been logged, we need to replace it
@@ -455,7 +455,7 @@ def get_stdout_summary(glm_version):
     retrieves statistics about a given model run from mongo
     '''
     conn = db.Database('visual_behavior_data')
-    collection = conn['ophys_glm']['cluster_stdout']
+    collection = conn['np_glm']['cluster_stdout']
     stdout_summary = pd.DataFrame(list(collection.find({'glm_version':glm_version})))
     conn.close()
 
@@ -517,7 +517,7 @@ def retrieve_results(search_dict={}, results_type='full', return_list=None,
     if verbose:
         print('Pulling from Mongo')
     conn = db.Database('visual_behavior_data')
-    database = 'ophys_glm'
+    database = 'np_glm'
     results = pd.DataFrame(list(conn[database]['results_{}'.format(results_type)].find(search_dict, return_dict)))
     cache = glm_params.get_cache()
 
