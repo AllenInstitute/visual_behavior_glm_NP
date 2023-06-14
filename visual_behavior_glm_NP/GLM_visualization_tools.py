@@ -299,7 +299,7 @@ def plot_kernel_support(glm,include_cont = True,plot_bands=True,plot_ticks=True,
     plt.yticks(ticks,all_k)
     plt.tick_params(axis='both',labelsize=16)
     plt.xlim(stim.iloc[0].start_time, stim.iloc[-1].start_time+.75)
-    #plt.title(str(glm.session.metadata['ophys_experiment_id']) +' '+glm.session.metadata['equipment_name'])
+    #plt.title(str(glm.session.metadata['ecephys_session_id']) +' '+glm.session.metadata['equipment_name'])
     plt.tight_layout()
     return
 
@@ -1139,16 +1139,16 @@ def plot_filters(glm, cell_specimen_id, n_cols=5):
     return fig, ax
 
 
-def get_title(ophys_experiment_id, cell_specimen_id, glm_version):
+def get_title(ecephys_session_id, cell_specimen_id, glm_version):
     '''
     generate a standardized figure title containing identifying information
     '''
     experiments_table = loading.get_filtered_ophys_experiment_table().reset_index()
 
-    row = experiments_table.query('ophys_experiment_id == @ophys_experiment_id').iloc[0].to_dict()
+    row = experiments_table.query('ecephys_session_id == @ecephys_session_id').iloc[0].to_dict()
     title = '{}_exp_id={}_{}_{}_depth={}_cell_id={}_glm_version={}'.format(
         row['cre_line'],
-        row['ophys_experiment_id'],
+        row['ecephys_session_id'],
         row['session_type'],
         row['targeted_structure'],
         row['imaging_depth'],
@@ -1345,7 +1345,7 @@ class GLM_Movie(object):
         if not self.cell_roi_plotted:
             cell_roi_id = gat.retrieve_results(
                 {
-                    'ophys_experiment_id':self.glm.ophys_experiment_id, 
+                    'ecephys_session_id':self.glm.ecephys_session_id, 
                     'cell_specimen_id':self.cell_specimen_id, 
                     'glm_version':self.glm.version
                 }, 
@@ -3372,7 +3372,7 @@ def plot_all_nested_dropouts(results_pivoted, run_params):
     plot_nested_dropouts(results_pivoted, run_params,filter_cre=True,  mixing=True, force_nesting=True, num_levels=2,cre='Vip-IRES-Cre')
     plot_nested_dropouts(results_pivoted, run_params,filter_cre=True,  mixing=True, force_nesting=True, num_levels=2,cre='Sst-IRES-Cre')
 
-def get_lick_triggered_motion_response(ophys_experiment_id, cell_specimen_id):
+def get_lick_triggered_motion_response(ecephys_session_id, cell_specimen_id):
     '''
     gets lick triggered responses for:
         x-motion correcion
@@ -3380,7 +3380,7 @@ def get_lick_triggered_motion_response(ophys_experiment_id, cell_specimen_id):
         dff
     returns tidy dataframe
     '''
-    dataset = loading.get_ophys_dataset(ophys_experiment_id)
+    dataset = loading.get_ophys_dataset(ecephys_session_id)
 
     motion_correction = dataset.motion_correction
     motion_correction['timestamps'] = dataset.ophys_timestamps
@@ -3419,7 +3419,7 @@ def get_lick_triggered_motion_response(ophys_experiment_id, cell_specimen_id):
     )
     return etr
 
-def plot_lick_triggered_motion(ophys_experiment_id, cell_specimen_id, title=''):
+def plot_lick_triggered_motion(ecephys_session_id, cell_specimen_id, title=''):
     '''
     makes a 3x1 figure showing:
         mean +/95% CI x-motion correction
@@ -3427,7 +3427,7 @@ def plot_lick_triggered_motion(ophys_experiment_id, cell_specimen_id, title=''):
         mean +/95% CI dF/F
     surrounding every lick in the session, for a given cell ID
     '''
-    event_triggered_response = get_lick_triggered_motion_response(ophys_experiment_id, cell_specimen_id)
+    event_triggered_response = get_lick_triggered_motion_response(ecephys_session_id, cell_specimen_id)
     fig,ax=plt.subplots(3,1,figsize=(12,5),sharex=True)
     for row,key in enumerate(['x','y','dff']):
         sns.lineplot(
@@ -3482,8 +3482,8 @@ def plot_population_perturbation(results_pivoted, run_params, dropouts_to_show =
 
     # Add additional columns about experience levels
     experiments_table = loading.get_platform_paper_experiment_table(include_4x2_data=run_params['include_4x2_data'])
-    experiment_table_columns = experiments_table.reset_index()[['ophys_experiment_id','last_familiar_active','second_novel_active','cell_type','binned_depth']]
-    results_pivoted = results_pivoted.merge(experiment_table_columns, on='ophys_experiment_id')
+    experiment_table_columns = experiments_table.reset_index()[['ecephys_session_id','last_familiar_active','second_novel_active','cell_type','binned_depth']]
+    results_pivoted = results_pivoted.merge(experiment_table_columns, on='ecephys_session_id')
    
     # Cells Matched across all three experience levels 
     cells_table = loading.get_cell_table(platform_paper_only=True, include_4x2_data=run_params['include_4x2_data'])
@@ -3615,8 +3615,8 @@ def plot_population_averages_by_depth(results_pivoted, run_params, dropouts_to_s
     
     # Add additional columns about experience levels
     experiments_table = loading.get_platform_paper_experiment_table(include_4x2_data=run_params['include_4x2_data'])
-    experiment_table_columns = experiments_table.reset_index()[['ophys_experiment_id','last_familiar_active','second_novel_active','cell_type','binned_depth']]
-    results_pivoted = results_pivoted.merge(experiment_table_columns, on='ophys_experiment_id')
+    experiment_table_columns = experiments_table.reset_index()[['ecephys_session_id','last_familiar_active','second_novel_active','cell_type','binned_depth']]
+    results_pivoted = results_pivoted.merge(experiment_table_columns, on='ecephys_session_id')
     
     # plotting variables
     cell_types = results_pivoted.cell_type.unique()
@@ -3739,8 +3739,8 @@ def plot_population_averages_by_area(results_pivoted, run_params, dropouts_to_sh
  
     # Add additional columns about experience levels
     experiments_table = loading.get_platform_paper_experiment_table(include_4x2_data=run_params['include_4x2_data'])
-    experiment_table_columns = experiments_table.reset_index()[['ophys_experiment_id','last_familiar_active','second_novel_active','cell_type','binned_depth']]
-    results_pivoted = results_pivoted.merge(experiment_table_columns, on='ophys_experiment_id')
+    experiment_table_columns = experiments_table.reset_index()[['ecephys_session_id','last_familiar_active','second_novel_active','cell_type','binned_depth']]
+    results_pivoted = results_pivoted.merge(experiment_table_columns, on='ecephys_session_id')
    
     # plotting variables
     cell_types = results_pivoted.cell_type.unique()
@@ -3906,11 +3906,11 @@ def plot_population_averages(results_pivoted, run_params, dropouts_to_show = ['a
     
     # Add additional columns about experience levels
     experiments_table = loading.get_platform_paper_experiment_table(include_4x2_data=run_params['include_4x2_data'])
-    experiment_table_columns = experiments_table.reset_index()[['ophys_experiment_id','last_familiar_active','second_novel_active','cell_type','binned_depth']]
+    experiment_table_columns = experiments_table.reset_index()[['ecephys_session_id','last_familiar_active','second_novel_active','cell_type','binned_depth']]
     if across_session:
-        results_pivoted = results_pivoted.merge(experiment_table_columns, on='ophys_experiment_id',suffixes=('','_y'))
+        results_pivoted = results_pivoted.merge(experiment_table_columns, on='ecephys_session_id',suffixes=('','_y'))
     else:
-        results_pivoted = results_pivoted.merge(experiment_table_columns, on='ophys_experiment_id')
+        results_pivoted = results_pivoted.merge(experiment_table_columns, on='ecephys_session_id')
 
     # Cells Matched across all three experience levels 
     cells_table = loading.get_cell_table(platform_paper_only=True,include_4x2_data=run_params['include_4x2_data'])
@@ -5155,7 +5155,7 @@ def view_cell_across_sessions(cell_specimen_id, glm_version):
     dropouts_for_cell = gat.retrieve_results(search_dict = search_dict, results_type = 'summary')
     for idx, row in dropouts_for_cell.sort_values(by='date_of_acquisition').reset_index().iterrows():
         # get the dataset
-        dataset = loading.get_ophys_dataset(row['ophys_experiment_id'])
+        dataset = loading.get_ophys_dataset(row['ecephys_session_id'])
 
         # get the cell mask info from the cell specimen table
         cell_roi_id = row['cell_roi_id']

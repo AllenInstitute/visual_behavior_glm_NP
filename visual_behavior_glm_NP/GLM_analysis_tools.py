@@ -17,22 +17,22 @@ import visual_behavior_glm_NP.GLM_params as glm_params
 
 NEURO_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
 
-def load_fit_pkl(run_params, ophys_experiment_id):
+def load_fit_pkl(run_params, ecephys_session_id):
     '''
         Loads the fit dictionary from the pkl file dumped by fit_experiment.
         Attempts to load the compressed pickle file if it exists, otherwise loads the uncompressed file
     
         Inputs:
         run_params, the dictionary of parameters for this version
-        ophys_experiment_id, the oeid to load the fit for
+        ecephys_session_id, the oeid to load the fit for
     
         Returns:
         the fit dictionary if it exists
 
     ''' 
 
-    filenamepkl = os.path.join(run_params['experiment_output_dir'],str(ophys_experiment_id)+'.pkl')
-    filenamepbz2 = os.path.join(run_params['experiment_output_dir'],str(ophys_experiment_id)+'.pbz2')
+    filenamepkl = os.path.join(run_params['experiment_output_dir'],str(ecephys_session_id)+'.pkl')
+    filenamepbz2 = os.path.join(run_params['experiment_output_dir'],str(ecephys_session_id)+'.pbz2')
 
     if os.path.isfile(filenamepbz2):
         fit = bz2.BZ2File(filenamepbz2, 'rb')
@@ -47,11 +47,11 @@ def load_fit_pkl(run_params, ophys_experiment_id):
 
 def log_error(error_dict, keys_to_check = []):
     '''
-    logs contents of error_dict to the `error_logs` collection in the `ophys_glm` mongo database
+    logs contents of error_dict to the `error_logs` collection in the `np_glm` mongo database
     '''
     conn=db.Database('visual_behavior_data') #establishes connection
     db.update_or_create(
-        collection = conn['ophys_glm']['error_logs'],
+        collection = conn['np_glm']['error_logs'],
         document = db.clean_and_timestamp(error_dict),
         keys_to_check = keys_to_check, # keys to check to determine whether an entry already exists. Overwrites if an entry is found with matching keys
     )
@@ -63,7 +63,7 @@ def get_error_log(search_dict = {}):
     if search dict is an empty dict (default), it will return full contents of the kernel_error_log collection
     '''
     conn=db.Database('visual_behavior_data') #establishes connection
-    result = conn['ophys_glm']['error_logs'].find(search_dict)
+    result = conn['np_glm']['error_logs'].find(search_dict)
     conn.close()
     return pd.DataFrame(list(result))
 
@@ -231,6 +231,7 @@ def generate_results_summary_non_cleaned(glm):
 
 
 def identify_dominant_dropouts(data, cluster_column_name, cols_to_search):
+    raise Exception('outdated')
     '''
     for each cluster ID, identifies the dominant dropout value amongst the `cols_to_search`
     adds columns for 'dominant_dropout' and 'dominant_dropout_median'
@@ -252,6 +253,7 @@ def identify_dominant_dropouts(data, cluster_column_name, cols_to_search):
 
 
 def sort_data(df_in, sort_order, cluster_column_name):
+    raise Exception('outdated')
     '''
     sort dataframe by `sort_order`
     identifies rows where the cluster_id shifts
@@ -267,13 +269,14 @@ def sort_data(df_in, sort_order, cluster_column_name):
 
 
 def already_fit(oeid, version):
+    raise Exception('outdated')
     '''
     check the weight_matrix_lookup_table to see if an oeid/glm_version combination has already been fit
     returns a boolean
     '''
     conn = db.Database('visual_behavior_data')
-    coll = conn['ophys_glm']['weight_matrix_lookup_table']
-    document_count = coll.count_documents({'ophys_experiment_id':int(oeid), 'glm_version':str(version)})
+    coll = conn['np_glm']['weight_matrix_lookup_table']
+    document_count = coll.count_documents({'ecephys_session_id':int(oeid), 'glm_version':str(version)})
     conn.close()
     return document_count > 0
 
@@ -289,21 +292,21 @@ def log_results_to_mongo(glm):
     full_results['glm_version'] = str(glm.version)
     results_summary['glm_version'] = str(glm.version)
 
-    results_summary['ophys_experiment_id'] = glm.ophys_experiment_id
+    results_summary['ecephys_session_id'] = glm.ecephys_session_id
     results_summary['ophys_session_id'] = glm.ophys_session_id
 
-    full_results['ophys_experiment_id'] = glm.ophys_experiment_id
+    full_results['ecephys_session_id'] = glm.ecephys_session_id
     full_results['ophys_session_id'] = glm.ophys_session_id
 
     conn = db.Database('visual_behavior_data')
 
     keys_to_check = {
-        'results_full':['ophys_experiment_id','cell_specimen_id','glm_version'],
-        'results_summary':['ophys_experiment_id','cell_specimen_id', 'dropout','glm_version']
+        'results_full':['ecephys_session_id','cell_specimen_id','glm_version'],
+        'results_summary':['ecephys_session_id','cell_specimen_id', 'dropout','glm_version']
     }
 
     for df,collection in zip([full_results, results_summary], ['results_full','results_summary']):
-        coll = conn['ophys_glm'][collection]
+        coll = conn['np_glm'][collection]
 
         for idx,row in df.iterrows():
             entry = row.to_dict()
@@ -316,30 +319,30 @@ def log_results_to_mongo(glm):
 
 def xarray_to_mongo(xarray):
     '''
-    writes xarray to the 'ophys_glm_xarrays' database in mongo
-    returns _id of xarray in the 'ophys_glm_xarrays' database
+    writes xarray to the 'np_glm_xarrays' database in mongo
+    returns _id of xarray in the 'np_glm_xarrays' database
     '''
     conn = db.Database('visual_behavior_data')
-    w_matrix_database = conn['ophys_glm_xarrays']
+    w_matrix_database = conn['np_glm_xarrays']
     xdb = xarray_mongodb.XarrayMongoDB(w_matrix_database)
     _id, _ = xdb.put(xarray)
     return _id
 
-def get_weights_matrix_from_mongo(ophys_experiment_id, glm_version):
+def get_weights_matrix_from_mongo(ecephys_session_id, glm_version):
     '''
     retrieves weights matrix from mongo for a given oeid/glm_version
     throws warning and returns None if no matrix can be found
     '''
     conn = db.Database('visual_behavior_data')
     lookup_table_document = {
-        'ophys_experiment_id':ophys_experiment_id,
+        'ecephys_session_id':ecephys_session_id,
         'glm_version':glm_version,
     }
-    w_matrix_lookup_table = conn['ophys_glm']['weight_matrix_lookup_table']
-    w_matrix_database = conn['ophys_glm_xarrays']
+    w_matrix_lookup_table = conn['np_glm']['weight_matrix_lookup_table']
+    w_matrix_database = conn['np_glm_xarrays']
 
     if w_matrix_lookup_table.count_documents(lookup_table_document) == 0:
-        warnings.warn('there is no record of a the weights matrix for oeid {}, glm_version {}'.format(ophys_experiment_id, glm_version))
+        warnings.warn('there is no record of a the weights matrix for oeid {}, glm_version {}'.format(ecephys_session_id, glm_version))
         conn.close()
         return None
     else:
@@ -366,11 +369,11 @@ def log_weights_matrix_to_mongo(glm):
 
     conn = db.Database('visual_behavior_data')
     lookup_table_document = {
-        'ophys_experiment_id':int(glm.ophys_experiment_id),
+        'ecephys_session_id':int(glm.ecephys_session_id),
         'glm_version':glm.version,
     }
-    w_matrix_lookup_table = conn['ophys_glm']['weight_matrix_lookup_table']
-    w_matrix_database = conn['ophys_glm_xarrays']
+    w_matrix_lookup_table = conn['np_glm']['weight_matrix_lookup_table']
+    w_matrix_database = conn['np_glm_xarrays']
 
     if w_matrix_lookup_table.count_documents(lookup_table_document) >= 1:
         # if weights matrix for this experiment/version has already been logged, we need to replace it
@@ -406,6 +409,7 @@ def log_weights_matrix_to_mongo(glm):
     conn.close()
 
 def get_experiment_table(glm_version, include_4x2_data=False): 
+    raise Exception('outdated')
     '''
     gets the experiment table
     appends the following:
@@ -420,12 +424,12 @@ def get_experiment_table(glm_version, include_4x2_data=False):
     stdout_summary = get_stdout_summary(glm_version)
 
     # add ROI count to experiment table
-    experiment_table['roi_count'] = experiment_table['ophys_experiment_id'].map(lambda oeid: get_roi_count(oeid))
+    experiment_table['roi_count'] = experiment_table['ecephys_session_id'].map(lambda oeid: get_roi_count(oeid))
 
     # get a count of the dropoutsof for each experiment/cell
     dropout_count = pd.DataFrame(
         (dropout_summary
-            .groupby(['ophys_experiment_id','cell_specimen_id'])['dropout']
+            .groupby(['ecephys_session_id','cell_specimen_id'])['dropout']
             .count())
             .reset_index()
             .rename(columns={'dropout': 'dropout_count'}
@@ -435,15 +439,15 @@ def get_experiment_table(glm_version, include_4x2_data=False):
     # merge in stdout summary
     experiment_table_merged = experiment_table.merge(
         stdout_summary,
-        left_on = 'ophys_experiment_id',
-        right_on = 'ophys_experiment_id',
+        left_on = 'ecephys_session_id',
+        right_on = 'ecephys_session_id',
         how='left'
     )
     # merge in dropout count (average dropout count per experiment - should be same for all cells)
     experiment_table_merged = experiment_table_merged.merge(
-        pd.DataFrame(dropout_count.groupby('ophys_experiment_id')['dropout_count'].mean()).reset_index(),
-        left_on = 'ophys_experiment_id',
-        right_on = 'ophys_experiment_id',
+        pd.DataFrame(dropout_count.groupby('ecephys_session_id')['dropout_count'].mean()).reset_index(),
+        left_on = 'ecephys_session_id',
+        right_on = 'ecephys_session_id',
         how='left'
     )
 
@@ -455,9 +459,12 @@ def get_stdout_summary(glm_version):
     retrieves statistics about a given model run from mongo
     '''
     conn = db.Database('visual_behavior_data')
-    collection = conn['ophys_glm']['cluster_stdout']
+    collection = conn['np_glm']['cluster_stdout']
     stdout_summary = pd.DataFrame(list(collection.find({'glm_version':glm_version})))
     conn.close()
+    if len(stdout_summary) == 0:
+        print('no stdout results')
+        return
 
     # parse the walltime column
     stdout_summary['required_walltime_seconds'] = stdout_summary['required_walltime'].map(lambda walltime_str: walltime_to_seconds(walltime_str))
@@ -474,11 +481,12 @@ def walltime_to_seconds(walltime_str):
     h, m, s = walltime_str.split(':')
     return int(h)*60*60 + int(m)*60 + int(s)
 
-def get_roi_count(ophys_experiment_id):
+def get_roi_count(ecephys_session_id):
+    raise Exception('outdated')
     '''
     a LIMS query to get the valid ROI count for a given experiment
     '''
-    query= 'select * from cell_rois where ophys_experiment_id = {}'.format(ophys_experiment_id)
+    query= 'select * from cell_rois where ecephys_session_id = {}'.format(ecephys_session_id)
     df = db.lims_query(query)
     return df['valid_roi'].sum()
 
@@ -517,7 +525,7 @@ def retrieve_results(search_dict={}, results_type='full', return_list=None,
     if verbose:
         print('Pulling from Mongo')
     conn = db.Database('visual_behavior_data')
-    database = 'ophys_glm'
+    database = 'np_glm'
     results = pd.DataFrame(list(conn[database]['results_{}'.format(results_type)].find(search_dict, return_dict)))
     cache = glm_params.get_cache()
 
@@ -555,7 +563,7 @@ def retrieve_results(search_dict={}, results_type='full', return_list=None,
     return results
 
 def make_identifier(row):
-    return '{}_{}'.format(row['ophys_experiment_id'],row['cell_specimen_id'])
+    return '{}_{}'.format(row['ecephys_session_id'],row['cell_specimen_id'])
 
 def get_glm_version_summary(versions_to_compare=None,vrange=[15,20], compact=True,invalid_only=False,remove_invalid_rois=True,save_results=True,additional_columns=[]):
     '''
@@ -570,7 +578,7 @@ def get_glm_version_summary(versions_to_compare=None,vrange=[15,20], compact=Tru
     if compact:
         dropouts = ['Full','visual','all-images','omissions','behavioral','task']
         return_list = np.concatenate([[x+'__avg_cv_var_test',x+'__avg_cv_var_train'] for x in dropouts])
-        return_list = np.concatenate([return_list, ['ophys_experiment_id','cell_roi_id','cre_line','glm_version']])
+        return_list = np.concatenate([return_list, ['ecephys_session_id','cell_roi_id','cre_line','glm_version']])
         return_list = np.concatenate([return_list, additional_columns])
     else:
         return_list = None
@@ -644,7 +652,7 @@ def build_pivoted_results_summary(value_to_use, results_summary=None, glm_versio
     if results_summary is None:
         results_summary = retrieve_results(search_dict = {'glm_version': glm_version}, results_type='summary',add_extra_columns=add_extra_columns)
 
-    results_summary['identifier'] = results_summary['ophys_experiment_id'].astype(str) + '_' +  results_summary['cell_specimen_id'].astype(str)
+    results_summary['identifier'] = results_summary['ecephys_session_id'].astype(str) + '_' +  results_summary['cell_specimen_id'].astype(str)
  
     # apply cutoff. Set to -inf if not specified
     if cutoff is None:
@@ -699,6 +707,7 @@ def build_pivoted_results_summary(value_to_use, results_summary=None, glm_versio
 
 
 def summarize_variance_explained(results=None):
+    raise Exception('outdated')
     '''
     return results summary grouped by version and cre-line
     '''
@@ -708,6 +717,7 @@ def summarize_variance_explained(results=None):
     return results.groupby(['glm_version','cre_line'])['Full_avg_cv_var_test'].describe()
 
 def run_pca(dropout_matrix, n_components=40, deal_with_nans='fill_with_zero'):
+    raise Exception('outdated')
     '''
     wrapper function for PCA
     inputs:
@@ -730,7 +740,7 @@ def run_pca(dropout_matrix, n_components=40, deal_with_nans='fill_with_zero'):
 
 def process_session_to_df(oeid, run_params):
     '''
-        For the ophys_experiment_id, loads the weight matrix, and builds a dataframe
+        For the ecephys_session_id, loads the weight matrix, and builds a dataframe
         organized by cell_id and kernel 
     '''
     # Get weights
@@ -739,7 +749,7 @@ def process_session_to_df(oeid, run_params):
     # Make Dataframe with cell and experiment info
     session_df  = pd.DataFrame()
     session_df['cell_specimen_id'] = W.cell_specimen_id.values
-    session_df['ophys_experiment_id'] = [int(oeid)]*len(W.cell_specimen_id.values)  
+    session_df['ecephys_session_id'] = [int(oeid)]*len(W.cell_specimen_id.values)  
     
     # For each kernel, extract the weights for this kernel
     for k in run_params['kernels']:
@@ -752,7 +762,7 @@ def process_session_to_df(oeid, run_params):
 
 def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=False,normalize=False):
     '''
-        Builds a dataframe of (cell_specimen_id, ophys_experiment_id) with the weight parameters for each kernel
+        Builds a dataframe of (cell_specimen_id, ecephys_session_id) with the weight parameters for each kernel
         Some columns may have NaN if that cell did not have a kernel, for example if a missing datastream  
         
         Takes about 5 minutes to run 
@@ -768,7 +778,7 @@ def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=
     '''
    
     # Make dataframe for cells and experiments 
-    oeids = results_pivoted['ophys_experiment_id'].unique() 
+    oeids = results_pivoted['ecephys_session_id'].unique() 
     if len(oeids) == 0:
         return None
 
@@ -781,7 +791,7 @@ def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=
 
     # Merge all the session_dfs, and add more session level info
     weights_df = pd.concat(sessions,sort=False)
-    weights_df = pd.merge(weights_df,results_pivoted, on = ['cell_specimen_id','ophys_experiment_id'],suffixes=('_weights','')) 
+    weights_df = pd.merge(weights_df,results_pivoted, on = ['cell_specimen_id','ecephys_session_id'],suffixes=('_weights','')) 
    
     # If we didn't compute dropout scores, then there won't be redundant columns, so the weights won't get appended with _weights
     if not np.any(['weights' in x for x in weights_df.columns.values]):
@@ -977,6 +987,7 @@ def append_kernel_excitation(weights_df, results_pivoted):
         
 
 def compute_over_fitting_proportion(results_full,run_params):
+    raise Exception('outdated')
     '''
         Computes the over-fitting proportion for each cell on each dropout model:
         (train_ve - test_ve)/train_ve
@@ -1002,6 +1013,7 @@ def compute_over_fitting_proportion(results_full,run_params):
 
 
 def find_best_session(results_pivoted, session_number, mouse_id=None, novelty=False):
+    raise Exception('outdated')
     '''
         If there are multiple retakes of the same ophys session type, picks one with most 
         registered neurons.
@@ -1058,6 +1070,7 @@ def find_best_session(results_pivoted, session_number, mouse_id=None, novelty=Fa
 
 
 def get_matched_cell_ids_across_sessions(results_pivoted_sel, session_numbers, novelty=None):
+    raise Exception('outdated')
     '''
         Finds cells with the same cell ids across sessions
         INPUT:
@@ -1099,6 +1112,7 @@ def get_matched_cell_ids_across_sessions(results_pivoted_sel, session_numbers, n
 
 
 def drop_cells_with_nan(results_pivoted, regressor):
+    raise Exception('outdated')
     '''
         Find cells that have NaN dropout scores in either one or more ophys sessions
         and drop them in all ophys sessions. Returns glm df without those cells.
@@ -1116,6 +1130,7 @@ def drop_cells_with_nan(results_pivoted, regressor):
 
 
 def get_matched_mouse_ids(results_pivoted, session_numbers):
+    raise Exception('outdated')
     '''
         Find mouse ids that have matched ophys sessions.
 
@@ -1136,6 +1151,7 @@ def get_matched_mouse_ids(results_pivoted, session_numbers):
 
 
 def clean_glm_dropout_scores(results_pivoted, run_params, in_session_numbers=None): 
+    raise Exception('outdated')
     '''
         Selects only neurons what are explained above threshold var. 
         In_session_numbers allows you specify with sessions to check. 
@@ -1212,16 +1228,14 @@ def inventory_glm_version(glm_version):
         return_list = ['ecephys_session_id', 'unit_id'],
         merge_in_experiment_metadata=False
     )
-    #print('Hack! GAT.inventory_glm_version')
-    #glm_results = pd.DataFrame()
+
     if len(glm_results) == 0:
         # Check for empty results
         glm_results['ecephys_session_id'] = [] 
         glm_results['unit_id'] = [] 
  
     # Get list of cells in the dataset
-    cache = glm_params.get_cache()
-    cell_table = cache.get_unit_table().reset_index()
+    cell_table = glm_params.get_unit_table().query('good_unit')
 
     # get list of rois and experiments we have fit
     total_sessions = glm_results['ecephys_session_id'].unique()
@@ -1262,6 +1276,7 @@ def inventory_glm_version(glm_version):
   
   
 def select_experiments_for_testing(returns = 'experiment_ids'):
+    raise Exception('outdated')
     '''
     This function will return 10 hand-picked experiment IDs to use for testing purposes.
     This will allow multiple versions to test against the same small set of experiments.
@@ -1289,12 +1304,13 @@ def select_experiments_for_testing(returns = 'experiment_ids'):
     test_experiments = pd.read_csv(NEURO_DIR+'experiments_for_testing.csv')
 
     if returns == 'experiment_ids':
-        return test_experiments['ophys_experiment_id'].unique()
+        return test_experiments['ecephys_session_id'].unique()
     elif returns == 'dataframe':
         return test_experiments
 
 
 def get_normalized_results_pivoted(glm_version = None, kind = 'max', cutoff = -np.inf):
+    raise Exception('outdated')
     '''
     Loads absolute results pivoted, then normalization.
     Currently only normalizes to max
@@ -1316,7 +1332,7 @@ def get_normalized_results_pivoted(glm_version = None, kind = 'max', cutoff = -n
                                                 cutoff=cutoff)
 
     col_to_exclude = ['identifier', 'Full','variance_explained_full', 'cell_specimen_id', 'cell_roi_id',
-       'glm_version', 'ophys_experiment_id', 'ophys_session_id',
+       'glm_version', 'ecephys_session_id', 'ophys_session_id',
        'equipment_name', 'donor_id', 'full_genotype', 'mouse_id',
        'reporter_line', 'driver_line', 'sex', 'age_in_days', 'foraging_id',
        'cre_line', 'indicator', 'session_number',
@@ -1382,6 +1398,7 @@ def get_kernel_weights(glm, kernel_name, cell_specimen_id):
     return t_kernel, w_kernel
 
 def get_sem_thresholds(results_pivoted, alpha=0.05,metric='SEM'):
+    raise Exception('outdated')   
     # Determine thresholds based on either:
     # just overall SEM
     # or whether mean > SEM
@@ -1394,6 +1411,7 @@ def get_sem_thresholds(results_pivoted, alpha=0.05,metric='SEM'):
     return thresholds
 
 def compare_sem_thresholds(results_pivoted):
+    raise Exception('outdated') 
     cres = results_pivoted.cre_line.unique()
     
     print('Current, MEAN > 0.005')
@@ -1419,23 +1437,25 @@ def compare_sem_thresholds(results_pivoted):
         print('{}: {}'.format(cre[0:3], np.round(frac,3)))
 
 def save_targeted_restart_table(run_params, results,save_table=True):
+    raise Exception('outdated') 
     '''
         Saves a table of experiments to restart. 
         Determines experiments to restart based on the presence of NaN variance explained
     '''    
 
     # get list of experiments to restart
-    nan_oeids = results[results['variance_explained'].isnull()]['ophys_experiment_id'].unique()
+    nan_oeids = results[results['variance_explained'].isnull()]['ecephys_session_id'].unique()
     print('{} Experiments with NaN variance explained'.format(len(nan_oeids))) 
     if len(nan_oeids) == 0:
         return
     if save_table:
-        restart_table = pd.DataFrame({'ophys_experiment_id':nan_oeids})
+        restart_table = pd.DataFrame({'ecephys_session_id':nan_oeids})
         table_path = run_params['output_dir']+'/restart_table.csv'
         restart_table.to_csv(table_path,index=False)
     return nan_oeids 
 
 def make_table_of_nan_cells(run_params, results,save_table=True):
+    raise Exception('outdated') 
     '''
         Generates a table of cells for which the variance explained is NaN.
         In general, this should not happen
@@ -1447,6 +1467,7 @@ def make_table_of_nan_cells(run_params, results,save_table=True):
     return nan_cells
 
 def check_nan_cells(fit):
+    raise Exception('outdated') 
     '''
         Plots the df/f, events, and interpolated events for all cells with exactly 0 activity
     '''
@@ -1463,6 +1484,7 @@ def check_nan_cells(fit):
 
    
 def check_cv_nans(fit):
+    raise Exception('outdated') 
     cv_var_test = fit['dropouts']['Full']['cv_var_test'].copy()
     orig_VE = np.mean(cv_var_test,1)
     orig_VE[orig_VE < 0] = 0
@@ -1511,11 +1533,12 @@ def check_cv_nans(fit):
 
 def reshape_rspm_by_experience(results_pivoted = None, model_output_type='adj_fraction_change_from_full',
                  glm_version='24_events_all_L2_optimize_by_session',
-                 ophys_experiment_ids_to_use = None,
+                 ecephys_session_ids_to_use = None,
                  drop_duplicated_cells = True,
                  cutoff=None, features=None, single=False, save_df=False,
                  path=None):
 
+    raise Exception('outdated') 
     '''
     Loads and reshapes pivoted GLM results, groups by cell and experience level,
     cleans them (drops NaNs and duplicates), picks chronologically first session if multiple retakes
@@ -1554,8 +1577,8 @@ def reshape_rspm_by_experience(results_pivoted = None, model_output_type='adj_fr
         results_pivoted = results_pivoted[results_pivoted['variance_explained_full']>cutoff]
         print('setting a cutoff')
 
-    if ophys_experiment_ids_to_use is not None:
-        results_pivoted= results_pivoted[results_pivoted['ophys_experiment_id'].isin(ophys_experiment_ids_to_use)]
+    if ecephys_session_ids_to_use is not None:
+        results_pivoted= results_pivoted[results_pivoted['ecephys_session_id'].isin(ecephys_session_ids_to_use)]
 
     print('loaded glm results')
     if features is None:
@@ -1595,6 +1618,7 @@ def reshape_rspm_by_experience(results_pivoted = None, model_output_type='adj_fr
     return df
 
 def get_default_features(single=False):
+    raise Exception('outdated') 
     '''
     Which regressors to select for clustering;
     default = ['all-images','omissions','behavioral','task',]
@@ -1616,6 +1640,7 @@ def get_default_features(single=False):
     return features
 
 def check_mesoscope(results,filters=['cre_line','targeted_structure','depth','meso']):
+    raise Exception('outdated') 
     results['meso'] = ['mesoscope' if x == "MESO.1" else 'scientifica' for x in results['equipment_name']]
     results['depth'] = [50 if x < 100 else 150 if x <200 else 250 if x<300 else 350 for x in results['imaging_depth']]
     summary = pd.DataFrame(results.groupby(filters)['Full__avg_cv_var_test'].mean())

@@ -61,7 +61,7 @@ def get_metrics(use_events=True,filter_events=False):
     return metrics_df
 
 def merge_cell_metrics_table(metrics_df, results_pivoted):
-    metrics_df['identifier'] = [str(x[0])+'_'+str(x[1]) for x in zip(metrics_df['ophys_experiment_id'],metrics_df['cell_specimen_id'])]
+    metrics_df['identifier'] = [str(x[0])+'_'+str(x[1]) for x in zip(metrics_df['ecephys_session_id'],metrics_df['cell_specimen_id'])]
     results_metrics = pd.merge(results_pivoted, metrics_df, on='identifier')
     results_metrics['equipment'] = ['Mesoscope' if x=="MESO.1" else "Scientifica" for x in results_metrics['equipment_name']]
     results_metrics['active'] =['Active' if not x else 'Passive' for x in results_metrics['passive']]
