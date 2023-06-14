@@ -231,6 +231,7 @@ def generate_results_summary_non_cleaned(glm):
 
 
 def identify_dominant_dropouts(data, cluster_column_name, cols_to_search):
+    raise Exception('outdated')
     '''
     for each cluster ID, identifies the dominant dropout value amongst the `cols_to_search`
     adds columns for 'dominant_dropout' and 'dominant_dropout_median'
@@ -252,6 +253,7 @@ def identify_dominant_dropouts(data, cluster_column_name, cols_to_search):
 
 
 def sort_data(df_in, sort_order, cluster_column_name):
+    raise Exception('outdated')
     '''
     sort dataframe by `sort_order`
     identifies rows where the cluster_id shifts
@@ -267,6 +269,7 @@ def sort_data(df_in, sort_order, cluster_column_name):
 
 
 def already_fit(oeid, version):
+    raise Exception('outdated')
     '''
     check the weight_matrix_lookup_table to see if an oeid/glm_version combination has already been fit
     returns a boolean
@@ -406,6 +409,7 @@ def log_weights_matrix_to_mongo(glm):
     conn.close()
 
 def get_experiment_table(glm_version, include_4x2_data=False): 
+    raise Exception('outdated')
     '''
     gets the experiment table
     appends the following:
@@ -478,6 +482,7 @@ def walltime_to_seconds(walltime_str):
     return int(h)*60*60 + int(m)*60 + int(s)
 
 def get_roi_count(ophys_experiment_id):
+    raise Exception('outdated')
     '''
     a LIMS query to get the valid ROI count for a given experiment
     '''
@@ -702,6 +707,7 @@ def build_pivoted_results_summary(value_to_use, results_summary=None, glm_versio
 
 
 def summarize_variance_explained(results=None):
+    raise Exception('outdated')
     '''
     return results summary grouped by version and cre-line
     '''
@@ -711,6 +717,7 @@ def summarize_variance_explained(results=None):
     return results.groupby(['glm_version','cre_line'])['Full_avg_cv_var_test'].describe()
 
 def run_pca(dropout_matrix, n_components=40, deal_with_nans='fill_with_zero'):
+    raise Exception('outdated')
     '''
     wrapper function for PCA
     inputs:
@@ -980,6 +987,7 @@ def append_kernel_excitation(weights_df, results_pivoted):
         
 
 def compute_over_fitting_proportion(results_full,run_params):
+    raise Exception('outdated')
     '''
         Computes the over-fitting proportion for each cell on each dropout model:
         (train_ve - test_ve)/train_ve
@@ -1005,6 +1013,7 @@ def compute_over_fitting_proportion(results_full,run_params):
 
 
 def find_best_session(results_pivoted, session_number, mouse_id=None, novelty=False):
+    raise Exception('outdated')
     '''
         If there are multiple retakes of the same ophys session type, picks one with most 
         registered neurons.
@@ -1061,6 +1070,7 @@ def find_best_session(results_pivoted, session_number, mouse_id=None, novelty=Fa
 
 
 def get_matched_cell_ids_across_sessions(results_pivoted_sel, session_numbers, novelty=None):
+    raise Exception('outdated')
     '''
         Finds cells with the same cell ids across sessions
         INPUT:
@@ -1102,6 +1112,7 @@ def get_matched_cell_ids_across_sessions(results_pivoted_sel, session_numbers, n
 
 
 def drop_cells_with_nan(results_pivoted, regressor):
+    raise Exception('outdated')
     '''
         Find cells that have NaN dropout scores in either one or more ophys sessions
         and drop them in all ophys sessions. Returns glm df without those cells.
@@ -1119,6 +1130,7 @@ def drop_cells_with_nan(results_pivoted, regressor):
 
 
 def get_matched_mouse_ids(results_pivoted, session_numbers):
+    raise Exception('outdated')
     '''
         Find mouse ids that have matched ophys sessions.
 
@@ -1139,6 +1151,7 @@ def get_matched_mouse_ids(results_pivoted, session_numbers):
 
 
 def clean_glm_dropout_scores(results_pivoted, run_params, in_session_numbers=None): 
+    raise Exception('outdated')
     '''
         Selects only neurons what are explained above threshold var. 
         In_session_numbers allows you specify with sessions to check. 
@@ -1263,6 +1276,7 @@ def inventory_glm_version(glm_version):
   
   
 def select_experiments_for_testing(returns = 'experiment_ids'):
+    raise Exception('outdated')
     '''
     This function will return 10 hand-picked experiment IDs to use for testing purposes.
     This will allow multiple versions to test against the same small set of experiments.
@@ -1296,6 +1310,7 @@ def select_experiments_for_testing(returns = 'experiment_ids'):
 
 
 def get_normalized_results_pivoted(glm_version = None, kind = 'max', cutoff = -np.inf):
+    raise Exception('outdated')
     '''
     Loads absolute results pivoted, then normalization.
     Currently only normalizes to max
@@ -1383,6 +1398,7 @@ def get_kernel_weights(glm, kernel_name, cell_specimen_id):
     return t_kernel, w_kernel
 
 def get_sem_thresholds(results_pivoted, alpha=0.05,metric='SEM'):
+    raise Exception('outdated')   
     # Determine thresholds based on either:
     # just overall SEM
     # or whether mean > SEM
@@ -1395,6 +1411,7 @@ def get_sem_thresholds(results_pivoted, alpha=0.05,metric='SEM'):
     return thresholds
 
 def compare_sem_thresholds(results_pivoted):
+    raise Exception('outdated') 
     cres = results_pivoted.cre_line.unique()
     
     print('Current, MEAN > 0.005')
@@ -1420,6 +1437,7 @@ def compare_sem_thresholds(results_pivoted):
         print('{}: {}'.format(cre[0:3], np.round(frac,3)))
 
 def save_targeted_restart_table(run_params, results,save_table=True):
+    raise Exception('outdated') 
     '''
         Saves a table of experiments to restart. 
         Determines experiments to restart based on the presence of NaN variance explained
@@ -1437,6 +1455,7 @@ def save_targeted_restart_table(run_params, results,save_table=True):
     return nan_oeids 
 
 def make_table_of_nan_cells(run_params, results,save_table=True):
+    raise Exception('outdated') 
     '''
         Generates a table of cells for which the variance explained is NaN.
         In general, this should not happen
@@ -1448,6 +1467,7 @@ def make_table_of_nan_cells(run_params, results,save_table=True):
     return nan_cells
 
 def check_nan_cells(fit):
+    raise Exception('outdated') 
     '''
         Plots the df/f, events, and interpolated events for all cells with exactly 0 activity
     '''
@@ -1464,6 +1484,7 @@ def check_nan_cells(fit):
 
    
 def check_cv_nans(fit):
+    raise Exception('outdated') 
     cv_var_test = fit['dropouts']['Full']['cv_var_test'].copy()
     orig_VE = np.mean(cv_var_test,1)
     orig_VE[orig_VE < 0] = 0
@@ -1517,6 +1538,7 @@ def reshape_rspm_by_experience(results_pivoted = None, model_output_type='adj_fr
                  cutoff=None, features=None, single=False, save_df=False,
                  path=None):
 
+    raise Exception('outdated') 
     '''
     Loads and reshapes pivoted GLM results, groups by cell and experience level,
     cleans them (drops NaNs and duplicates), picks chronologically first session if multiple retakes
@@ -1596,6 +1618,7 @@ def reshape_rspm_by_experience(results_pivoted = None, model_output_type='adj_fr
     return df
 
 def get_default_features(single=False):
+    raise Exception('outdated') 
     '''
     Which regressors to select for clustering;
     default = ['all-images','omissions','behavioral','task',]
@@ -1617,6 +1640,7 @@ def get_default_features(single=False):
     return features
 
 def check_mesoscope(results,filters=['cre_line','targeted_structure','depth','meso']):
+    raise Exception('outdated') 
     results['meso'] = ['mesoscope' if x == "MESO.1" else 'scientifica' for x in results['equipment_name']]
     results['depth'] = [50 if x < 100 else 150 if x <200 else 250 if x<300 else 350 for x in results['imaging_depth']]
     summary = pd.DataFrame(results.groupby(filters)['Full__avg_cv_var_test'].mean())
