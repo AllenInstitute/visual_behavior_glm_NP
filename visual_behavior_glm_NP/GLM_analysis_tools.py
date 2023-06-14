@@ -1235,7 +1235,7 @@ def inventory_glm_version(glm_version):
         glm_results['unit_id'] = [] 
  
     # Get list of cells in the dataset
-    cell_table = glm_params.get_unit_table()
+    cell_table = glm_params.get_unit_table().query('good_unit')
 
     # get list of rois and experiments we have fit
     total_sessions = glm_results['ecephys_session_id'].unique()

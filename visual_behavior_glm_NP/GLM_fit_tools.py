@@ -140,7 +140,7 @@ def fit_experiment(oeid, run_params, NO_DROPOUTS=False, TESTING=False):
 
     # Processing df/f data
     print('Processing df/f data')
-    fit,run_params = extract_and_annotate_ephys(session,run_params, TESTING=TESTING)
+    fit, run_params = extract_and_annotate_ephys(session,run_params, TESTING=TESTING)
 
     # Make Design Matrix
     print('Build Design Matrix')
@@ -1082,13 +1082,12 @@ def extract_and_annotate_ephys(session, run_params, TESTING=False):
         establishes time bins
         processes spike times into spike counts for each time bin
     '''
-
-    session = active_passive_split(session,run_params)
-    
+   
     fit = dict()
+    session = active_passive_split(session,run_params)
     fit = establish_ephys_timebins(fit,session, run_params)
     fit = process_ephys_data(fit, session, run_params, TESTING)
-    
+    return fit, run_params
     # If we are splitting on engagement, then determine the engagement timepoints
     if run_params['split_on_engagement']:
         print('Adding Engagement labels. Preferred engagement state: '+\
@@ -1137,13 +1136,66 @@ def establish_ephys_timebins(fit, session, run_params):
     timebin_ends = timebin_starts + step
     timebins = np.vstack([timebin_starts, timebin_ends]).T 
     fit['timebins'] = timebins
+    fit['bin_centers'] = timebin_starts + step/2
 
     return fit
 
 def process_ephys_data(fit, session, run_params, TESTING = False):
+    # Grab units and spikes from session object
+    units = session.get_units()
+    channels = session.get_channels()
+    unit_channels = units.merge(channels,left_on='peak_channel_id',right_index=True)
+    spike_times = session.spike_times
+    
+    # Filter units
+    unit_channels = unit_channels.query(
+        '(isi_violations < 0.5) & '+\
+        '(amplitude_cutoff < 0.1) & '+\
+        '(presence_ratio > 0.95) & '+\
+        '(quality == "good")').copy()
+ 
+    # bin spikes 
+    spikes = np.zeros([np.shape(fit['timebins'])[0],len(unit_channels)])
+    for index, unit in tqdm(enumerate(unit_channels.index.values),
+        total = len(unit_channels),desc='binning spikes'):
+        spikes[:,index] = get_spike_counts(spike_times[unit],fit['timebins']) 
 
+    # Make xarray
+    spike_count_arr = xr.DataArray(
+        spikes, 
+        dims = ('bin_centers','unit_id'), 
+        coords = {
+            'bin_centers':fit['bin_centers'],
+            'unit_id':unit_channels.index.values
+        }
+        )
+    fit['spike_count_arr'] = spike_count_arr
 
     return fit
+
+def get_spike_counts(spike_times, timebins):
+    '''
+        spike_times, a list of spike times, sorted
+        timebins, numpy array of bins X start/stop
+            timebins[i,0] is the start of bin i
+            timbins[i,1] is the end of bin i
+        
+
+    '''
+    counts = np.zeros([np.shape(timebins)[0]])
+    spike_pointer =0
+    bin_pointer = 0
+    while (spike_pointer < len(spike_times))&(bin_pointer < np.shape(timebins)[0]):
+        if spike_times[spike_pointer] < timebins[bin_pointer,0]:
+            # This spike happens before the time bin, advance spike
+            spike_pointer += 1
+        elif spike_times[spike_pointer] >= timebins[bin_pointer,1]:
+            # This spike happens after the time bin, advance time bin
+            bin_pointer += 1
+        else:
+            counts[bin_pointer] += 1
+            spike_pointer += 1
+    return counts
 
 def interpolate_to_stimulus(fit, session, run_params):
     '''
