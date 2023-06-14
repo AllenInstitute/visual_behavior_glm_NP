@@ -1093,6 +1093,8 @@ def extract_and_annotate_ephys(session, run_params, TESTING=False):
     
     fit = dict()
     fit = establish_ephys_timebins(fit,session, run_params)
+    return fit
+
     fit = process_ephys_data(fit, session, run_params, TESTING)
     
     # If we are splitting on engagement, then determine the engagement timepoints
@@ -1110,8 +1112,29 @@ def establish_ephys_timebins(fit, session, run_params):
         Establish the timebins using alot of the same logic as interpolate to stimulus
         make sure timebins don't overlap, etc.
     '''
-    start_time = session.filtered_stimulus.iloc[0].start_time
-    end_time = session.filtered_stimulus.iloc[-1].start_time + 0.75
+
+    # Determine timebins. We start with each stimulus and add time bins 
+    # until we hit the next stimulus. Note there are gaps between time bins
+    start_times = session.filtered_stimulus.start_time.values
+    start_times = np.concatenate([start_times,[start_times[-1]+.75]]) 
+    step = run_params['spike_bin_width']
+    sets_of_timebin_starts = []
+    bins_per_image = int(np.floor(.75/step))-1
+    for index, start in enumerate(start_times[0:-1]):
+        this_starts = np.arange(start_times[index], start_times[index+1]- step,step)
+        sets_of_timebin_starts.append(this_starts[0:bins_per_image]) 
+
+    # Check to make sure we have the same number of timebins per stimulus
+    lens = np.array([len(x) for x in sets_of_timebin_starts])
+    overlap = np.sum(bins_per_image - lens[np.where(lens !=bins_per_image)[0]])
+    if overlap > run_params['image_kernel_overlap_tol']:
+        raise Exception('Uneven number of timebins per stimulus: {}'.format(overlap))
+
+    # Make timebins, pack up
+    timebin_starts = np.concatenate(sets_of_timebin_starts)
+    timebin_ends = timebin_starts + step
+    timebins = np.vstack([timebin_starts, timebin_ends]).T 
+    fit['timebins'] = timebins
 
     return fit
 
