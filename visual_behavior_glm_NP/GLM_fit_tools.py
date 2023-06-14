@@ -995,87 +995,6 @@ def process_eye_data(session,run_params,ophys_timestamps=None):
     return ophys_eye 
 
 
-
-def process_data(session, run_params, TESTING=False):
-    '''
-    Processes dff traces by trimming off portions of recording session outside of the task period. These include:
-        * a ~5 minute gray screen period before the task begins
-        * a ~5 minute gray screen period after the task ends
-        * a 5-10 minute movie following the second gray screen period
-    
-    input -- session object 
-    run_params, run json dictionary
-    TESTING,        if True, only includes the first 6 cells of the experiment
-
-    returns -- an xarray of of deltaF/F traces with dimensions [timestamps, cell_specimen_ids]
-    '''
-
-    # clip off the grey screen periods
-    fit_trace_timestamps = session.ophys_timestamps
-    timestamps_to_use = get_ophys_frames_to_use(session)
-
-    # Get the matrix of dff traces
-    dff_trace_arr = get_dff_arr(session, timestamps_to_use)
-    
-    if ('use_events' in run_params) and (run_params['use_events']):
-        print('Using detected events instead of df/f')
-        events_trace_arr = get_events_arr(session, timestamps_to_use) 
-        assert np.size(dff_trace_arr) == np.size(events_trace_arr), 'Events array doesnt match size of df/f array'
-        fit_trace_arr = copy(events_trace_arr)
-    else:
-        fit_trace_arr = copy(dff_trace_arr)
-        events_trace_arr = None 
-
-    # some assert statements to ensure that dimensions are correct
-    assert np.sum(timestamps_to_use) == len(fit_trace_arr['fit_trace_timestamps'].values), 'length of `timestamps_to_use` must match length of `fit_trace_timestamps` in `fit_trace_arr`'
-    assert np.sum(timestamps_to_use) == fit_trace_arr.values.shape[0], 'length of `timestamps_to_use` must match 0th dimension of `fit_trace_arr`'
-    if ('include_invalid_rois' in run_params):
-        include_invalid_rois = (run_params['include_invalid_rois'])
-    else:
-        include_invalid_rois = False
-
-    if include_invalid_rois:
-        assert len(session.cell_specimen_table) == fit_trace_arr.values.shape[1], 'number of ROIs must match 1st dimension of `fit_trace_arr`'
-    else:
-        assert len(session.cell_specimen_table.query('valid_roi == True')) == fit_trace_arr.values.shape[1], 'number of valid ROIs must match 1st dimension of `fit_trace_arr`'
-
-    # Clip the array to just the first 6 cells
-    if TESTING:
-        fit_trace_arr = fit_trace_arr[:,0:6]
-        dff_trace_arr = dff_trace_arr[:,0:6]
-        if events_trace_arr is not None:
-            events_trace_arr = events_trace_arr[:,0:6]
-           
-    return (fit_trace_arr,dff_trace_arr,events_trace_arr)
-
-def extract_and_annotate_ophys(session, run_params, TESTING=False):
-    '''
-        Creates fit dictionary
-        extracts dff_trace or events_trace from session object
-        sets up the timestamps to be used
-        sets up bins for binning times onto the ophys timestamps
-    '''
-    fit= dict()
-    trace_tuple = process_data(session,run_params, TESTING=TESTING)
-    fit['fit_trace_arr'] = trace_tuple[0]
-    fit['dff_trace_arr'] = trace_tuple[1]
-    fit['events_trace_arr'] = trace_tuple[2]
-    fit['fit_trace_timestamps'] = fit['fit_trace_arr']['fit_trace_timestamps'].values
-    step = np.mean(np.diff(fit['fit_trace_timestamps']))
-    fit['fit_trace_bins'] = np.concatenate([fit['fit_trace_timestamps'],[fit['fit_trace_timestamps'][-1]+step]])-step*.5  
-    fit['ophys_frame_rate'] = session.metadata['ophys_frame_rate']
-   
-    # Interpolate onto stimulus 
-    fit,run_params = interpolate_to_stimulus(fit, session, run_params)
- 
-    # If we are splitting on engagement, then determine the engagement timepoints
-    if run_params['split_on_engagement']:
-        print('Adding Engagement labels. Preferred engagement state: '+run_params['engagement_preference'])
-        fit = add_engagement_labels(fit, session, run_params)
-    else:
-        fit['ok_to_fit_preferred_engagement'] = True
-    return fit, run_params
-
 def extract_and_annotate_ephys(session, run_params, TESTING=False):
     '''
         Creates the fit dictionary
@@ -1087,11 +1006,12 @@ def extract_and_annotate_ephys(session, run_params, TESTING=False):
     session = active_passive_split(session,run_params)
     fit = establish_ephys_timebins(fit,session, run_params)
     fit = process_ephys_data(fit, session, run_params, TESTING)
-    return fit, run_params
+
     # If we are splitting on engagement, then determine the engagement timepoints
     if run_params['split_on_engagement']:
         print('Adding Engagement labels. Preferred engagement state: '+\
             run_params['engagement_preference'])
+        raise Exception('need to implement engagement splits')
         fit = add_engagement_labels(fit, session, run_params)
     else:
         fit['ok_to_fit_preferred_engagement'] = True
@@ -1137,7 +1057,7 @@ def establish_ephys_timebins(fit, session, run_params):
     timebins = np.vstack([timebin_starts, timebin_ends]).T 
     fit['timebins'] = timebins
     fit['bin_centers'] = timebin_starts + step/2
-
+    fit['spike_bin_width'] = run_params['spike_bin_width']
     return fit
 
 def process_ephys_data(fit, session, run_params, TESTING = False):
@@ -1196,6 +1116,59 @@ def get_spike_counts(spike_times, timebins):
             counts[bin_pointer] += 1
             spike_pointer += 1
     return counts
+
+def add_rewards_each_flash(session):
+    '''
+    Append a column to stimulus_presentations which contains the timestamps of rewards that occur
+    in a range relative to the onset of the stimulus.
+
+    Args:
+        stimulus_presentations (pd.DataFrame): dataframe of stimulus presentations.
+            Must contain: 'start_time'
+        rewards (pd.DataFrame): rewards dataframe. Must contain 'timestamps'
+        range_relative_to_stimulus_start (list with 2 elements): start and end of the range
+            relative to the start of each stimulus to average the running speed.
+    Returns:
+        nothing. session.stimulus_presentations is modified in place with 'rewards' column added
+    '''
+
+    rewards_each_flash = add_rewards_each_flash_inner(session.stimulus_presentations,
+                                                session.rewards)
+    session.stimulus_presentations['rewards'] = rewards_each_flash
+    
+def add_rewards_each_flash_inner(stimulus_presentations_df, rewards_df,
+                       range_relative_to_stimulus_start=[0, 0.75]):
+    '''
+    Append a column to stimulus_presentations which contains the timestamps of rewards that occur
+    in a range relative to the onset of the stimulus.
+
+    Args:
+        stimulus_presentations_df (pd.DataFrame): dataframe of stimulus presentations.
+            Must contain: 'start_time'
+        rewards_df (pd.DataFrame): rewards dataframe. Must contain 'timestamps'
+        range_relative_to_stimulus_start (list with 2 elements): start and end of the range
+            relative to the start of each stimulus to average the running speed.
+    Returns:
+        rewards_each_flash (pd.Series): reward times that fell within the window
+    '''
+
+    reward_times = rewards_df['timestamps'].values
+    stimulus_presentations_df['next_start'] = stimulus_presentations_df['start_time'].shift(-1)
+    stimulus_presentations_df.at[stimulus_presentations_df.index[-1], 'next_start'] = \
+        stimulus_presentations_df.iloc[-1]['start_time'] + .75
+    rewards_each_flash = stimulus_presentations_df.apply(
+        lambda row: reward_times[
+            ((
+                reward_times > row["start_time"]
+            ) & (
+                reward_times <= row["next_start"]
+            ))
+        ],
+        axis=1,
+    )
+    stimulus_presentations_df.drop(columns=['next_start'], inplace=True)
+
+    return rewards_each_flash
 
 def interpolate_to_stimulus(fit, session, run_params):
     '''
@@ -1444,7 +1417,7 @@ def add_engagement_labels(fit, session, run_params):
     win_type='triang'
 
     # Get reward rate
-    session.stimulus_presentations = reformat.add_rewards_each_flash(session.stimulus_presentations,session.rewards)
+    add_rewards_each_flash(session)
     session.stimulus_presentations['rewarded'] = [len(x) > 0 for x in session.stimulus_presentations['rewards']]
     session.stimulus_presentations['reward_rate'] = session.stimulus_presentations['rewarded'].rolling(win_dur,min_periods=1,win_type=win_type).mean()/.75
     session.stimulus_presentations['engaged']= [x > reward_threshold for x in session.stimulus_presentations['reward_rate']]    
@@ -1565,9 +1538,9 @@ def add_continuous_kernel_by_label(kernel_name, design, run_params, session,fit)
             raise Exception('\tInsufficient time points to add kernel')
 
         if event == 'intercept':
-            timeseries = np.ones(len(fit['fit_trace_timestamps']))
+            timeseries = np.ones(len(fit['bin_centers']))
         elif event == 'time':
-            timeseries = np.array(range(1,len(fit['fit_trace_timestamps'])+1))
+            timeseries = np.array(range(1,len(fit['bin_centers'])+1))
             timeseries = timeseries/len(timeseries)
         elif event == 'running':
             running_df = session.running_speed
@@ -1604,11 +1577,11 @@ def add_continuous_kernel_by_label(kernel_name, design, run_params, session,fit)
             timeseries = timeseries['values'].values
             timeseries = standardize_inputs(timeseries, mean_center=run_params['mean_center_inputs'],unit_variance=run_params['unit_variance_inputs'])
         elif event == 'pupil':
-            session.ophys_eye = process_eye_data(session,run_params,ophys_timestamps =fit['fit_trace_timestamps'] )
+            session.ophys_eye = process_eye_data(session,run_params,ophys_timestamps =fit['bin_centers'] )
             timeseries = session.ophys_eye['pupil_radius_zscore'].values
         elif event == 'lick_model' or event == 'groom_model':
             if not hasattr(session, 'lick_groom_model'):
-                session.lick_groom_model = process_behavior_predictions(session, ophys_timestamps = fit['fit_trace_timestamps'])
+                session.lick_groom_model = process_behavior_predictions(session, ophys_timestamps = fit['bin_centers'])
             timeseries = session.lick_groom_model[event.split('_')[0]].values
         else:
             raise Exception('Could not resolve kernel label')
@@ -1784,7 +1757,7 @@ def check_by_engagement_state(run_params, fit,event_times,event):
     if not run_params['split_on_engagement']:
         return
 
-    # Bin events onto fit_trace_timestamps    
+    # Bin events onto bin_centers    
     events_vec, timestamps = np.histogram(event_times, bins=fit['fit_trace_bins'])    
     if event == 'lick_bouts': 
         # Force this to be 0 or 1, since we purposefully over-tiled the space. 
@@ -1813,15 +1786,14 @@ class DesignMatrix(object):
         Args
             fit_dict, a dictionary with:
                 event_timestamps: The actual timestamps for each time bin that will be used in the regression model. 
-                ophys_frame_rate: the number of ophys timestamps per second
         '''
 
         # Add some kernels
         self.X = None
         self.kernel_dict = {}
         self.running_stop = 0
-        self.events = {'timestamps':fit_dict['fit_trace_timestamps']}
-        self.ophys_frame_rate = fit_dict['ophys_frame_rate']
+        self.events = {'timestamps':fit_dict['bin_centers']}
+        self.spike_bin_width=fit_dict['spike_bin_width']
 
     def make_labels(self, label, num_weights,offset, length): 
         base = [label] * num_weights 
@@ -1905,13 +1877,13 @@ class DesignMatrix(object):
             if kernel_length == 0:
                 kernel_length_samples = 1
             else:
-                kernel_length_samples = int(np.ceil(self.ophys_frame_rate*kernel_length)) 
+                kernel_length_samples = int(np.ceil((1/self.spike_bin_width)*kernel_length)) 
         else:
             # Some kernels are hard-coded by number of weights
             kernel_length_samples = num_weights
 
         # CONVERT offset to offset_samples
-        offset_samples = int(np.floor(self.ophys_frame_rate*offset))
+        offset_samples = int(np.floor((1/self.spike_bin_width)*offset))
 
         this_kernel = toeplitz(events, kernel_length_samples, offset_samples)
     
@@ -1940,12 +1912,12 @@ def split_by_engagement(design, run_params, session, fit):
     # Set up time arrays, and dff/events arrays to match engagement preference
     fit['engaged_trace_arr'] = fit['fit_trace_arr'][fit['engaged'].astype(bool),:]
     fit['disengaged_trace_arr'] = fit['fit_trace_arr'][~fit['engaged'].astype(bool),:]
-    fit['engaged_trace_timestamps'] = fit['fit_trace_timestamps'][fit['engaged'].astype(bool)]
-    fit['disengaged_trace_timestamps'] =fit['fit_trace_timestamps'][~fit['engaged'].astype(bool)]
+    fit['engaged_trace_timestamps'] = fit['bin_centers'][fit['engaged'].astype(bool)]
+    fit['disengaged_trace_timestamps'] =fit['bin_centers'][~fit['engaged'].astype(bool)]
     fit['full_trace_arr'] = fit['fit_trace_arr']
-    fit['full_trace_timestamps'] = fit['fit_trace_timestamps']    
+    fit['full_trace_timestamps'] = fit['bin_centers']    
     fit['fit_trace_arr'] = fit[run_params['engagement_preference']+'_trace_arr']
-    fit['fit_trace_timestamps'] = fit[run_params['engagement_preference']+'_trace_timestamps']
+    fit['bin_centers'] = fit[run_params['engagement_preference']+'_trace_timestamps']
 
     # trim design matrix  
     print('Trimming Design Matrix by engagement')
@@ -2014,83 +1986,6 @@ def toeplitz(events, kernel_length_samples,offset_samples):
         this_kernel = np.concatenate([this_kernel, np.zeros((this_kernel.shape[0], offset_samples))], axis=1)
         this_kernel = np.roll(this_kernel, offset_samples)[:, :-offset_samples]
     return this_kernel[:,:total_len]
-
-
-def get_ophys_frames_to_use(session, end_buffer=0.5,stim_dur = 0.25):
-    '''
-    Trims out the grey period at start, end, and the fingerprint.
-    Args:
-        session (allensdk.brain_observatory.behavior.behavior_ophys_session.BehaviorOphysSession)
-        end_buffer (float): duration in seconds to extend beyond end of last stimulus presentation (default = 0.5)
-        stim_dur (float): duration in seconds of stimulus presentations
-    Returns:
-        ophys_frames_to_use (np.array of bool): Boolean mask with which ophys frames to use
-    '''
-    # filter out omitted flashes to avoid omitted flashes at the start of the session from affecting analysis range
-    filtered_stimulus_presentations = session.stimulus_presentations
-    while filtered_stimulus_presentations.iloc[0]['omitted'] == True:
-        filtered_stimulus_presentations = filtered_stimulus_presentations.iloc[1:]
-    
-    ophys_frames_to_use = (
-        (session.ophys_timestamps >= filtered_stimulus_presentations.iloc[0]['start_time']-end_buffer) 
-        & (session.ophys_timestamps <= filtered_stimulus_presentations.iloc[-1]['start_time'] +stim_dur+ end_buffer)
-    )
-    return ophys_frames_to_use
-
-def get_events_arr(session, timestamps_to_use):
-    '''
-    Get the events traces from a session in xarray format (preserves cell ids and timestamps)
-
-    timestamps_to_use is a boolean vector that contains which timestamps to use in the analysis
-    '''
-    # Get events and trim off ends
-    all_events = np.stack(session.events['filtered_events'].values)
-    all_events_to_use = all_events[:, timestamps_to_use]
-
-    # Get the timestamps
-    events_trace_timestamps = session.ophys_timestamps
-    events_trace_timestamps_to_use = events_trace_timestamps[timestamps_to_use]
-
-    # Note: it may be more efficient to get the xarrays directly, rather than extracting/building them from session.events_traces
-    #       The dataframes are built from xarrays to start with, so we are effectively converting them twice by doing this
-    #       But if there's no big time penalty to doing it this way, then maybe just leave it be.
-    # Intentionally setting the name of the time axis to fit_trace_timestamps so it matches the fit_trace_arr
-    events_trace_xr = xr.DataArray(
-            data = all_events_to_use.T,
-            dims = ("fit_trace_timestamps", "cell_specimen_id"),
-            coords = {
-                "fit_trace_timestamps": events_trace_timestamps_to_use,
-                "cell_specimen_id": session.cell_specimen_table.index.values
-            }
-        )
-    return events_trace_xr
-
-def get_dff_arr(session, timestamps_to_use):
-    '''
-    Get the dff traces from a session in xarray format (preserves cell ids and timestamps)
-
-    timestamps_to_use is a boolean vector that contains which timestamps to use in the analysis
-    '''
-    # Get dff and trim off ends
-    all_dff = np.stack(session.dff_traces['dff'].values)
-    all_dff_to_use = all_dff[:, timestamps_to_use]
-
-    # Get the timestamps
-    fit_trace_timestamps = session.ophys_timestamps
-    fit_trace_timestamps_to_use = fit_trace_timestamps[timestamps_to_use]
-
-    # Note: it may be more efficient to get the xarrays directly, rather than extracting/building them from session.dff_traces
-    #       The dataframes are built from xarrays to start with, so we are effectively converting them twice by doing this
-    #       But if there's no big time penalty to doing it this way, then maybe just leave it be.
-    dff_trace_xr = xr.DataArray(
-            data = all_dff_to_use.T,
-            dims = ("fit_trace_timestamps", "cell_specimen_id"),
-            coords = {
-                "fit_trace_timestamps": fit_trace_timestamps_to_use,
-                "cell_specimen_id": session.cell_specimen_table.index.values
-            }
-        )
-    return dff_trace_xr
 
 def interpolate_to_ophys_timestamps(fit,df):
     '''
