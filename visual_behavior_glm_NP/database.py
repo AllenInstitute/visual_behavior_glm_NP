@@ -225,7 +225,7 @@ def populate_id_dict(input_id_dict):
       * `id` in the LIMS `ophys_sessions` table
       * `ophys_session_id` in LIMS `behavior_sessions` table
       * `ophys_session_id` in LIMS `ophys_experiments` table
-    * `ophys_experiment_id`: a 9 digit integer. Each ophys session has one experiment.
+    * `ecephys_session_id`: a 9 digit integer. Each ophys session has one experiment.
       * `id` in the LIMS `ophys_experiments` table
 
     For example, for the session run by mouse 450471 on 2P3 on June 4, 2019:
@@ -235,13 +235,13 @@ def populate_id_dict(input_id_dict):
     * LIMS ophys_experiment ID = 880961028
 
     example:
-        >> populate_id_dict({'ophys_experiment_id': 880961028,})
+        >> populate_id_dict({'ecephys_session_id': 880961028,})
 
         returns:
         {'behavior_session_id': 880784794,
          'behavior_session_uuid': '4d4dfd3e-e1bf-4ad8-9775-1273ce7e5189',
          'foraging_id': '4d4dfd3e-e1bf-4ad8-9775-1273ce7e5189',
-         'ophys_experiment_id': 880961028,
+         'ecephys_session_id': 880961028,
          'ophys_session_id': 880753403}
 
     '''
@@ -250,7 +250,7 @@ def populate_id_dict(input_id_dict):
         'foraging_id': None,
         'behavior_session_id': None,
         'ophys_session_id': None,
-        'ophys_experiment_id': None,
+        'ecephys_session_id': None,
     }
 
     assert (len(input_id_dict) == 1), "use only one ID type to identify others"
@@ -273,14 +273,14 @@ def populate_id_dict(input_id_dict):
         if ids['behavior_session_id']:
             ids['foraging_id'] = get_value_from_table('id', ids['behavior_session_id'], 'behavior_sessions', 'foraging_id')
 
-        # if we have ophys_session_id, get ophys_experiment_id:
+        # if we have ophys_session_id, get ecephys_session_id:
         if ids['ophys_session_id']:
-            ids['ophys_experiment_id'] = get_value_from_table('ophys_session_id', ids['ophys_session_id'], 'ophys_experiments', 'id')
+            ids['ecephys_session_id'] = get_value_from_table('ophys_session_id', ids['ophys_session_id'], 'ophys_experiments', 'id')
             ids['foraging_id'] = get_value_from_table('id', ids['ophys_session_id'], 'ophys_sessions', 'foraging_id')
 
-        # if we have ophys_experiment_id, get ophys_session_id:
-        if ids['ophys_experiment_id']:
-            ids['ophys_session_id'] = get_value_from_table('id', ids['ophys_experiment_id'], 'ophys_experiments', 'ophys_session_id')
+        # if we have ecephys_session_id, get ophys_session_id:
+        if ids['ecephys_session_id']:
+            ids['ophys_session_id'] = get_value_from_table('id', ids['ecephys_session_id'], 'ophys_experiments', 'ophys_session_id')
 
         existing_keys = [(k, v) for k, v in ids.items() if v]
         if len(existing_keys) == 5:
@@ -316,7 +316,7 @@ def convert_id(input_dict, desired_key):
     * `foraging_id`: Alternate nomenclature for `behavior_session_uuid` used by LIMS
     * `behavior_session_id`: a 9 digit integer identifying the behavior session
     * `ophys_session_id`: a 9 digit integer identifying the ophys session. Every ophys session has an associated behavior session.
-    * `ophys_experiment_id`: a 9 digit integer. Each ophys session has one experiment.
+    * `ecephys_session_id`: a 9 digit integer. Each ophys session has one experiment.
 
     For example, for the session run by mouse 450471 on 2P3 on June 4, 2019:
     * behavior_session_uuid = 4d4dfd3e-e1bf-4ad8-9775-1273ce7e5189
@@ -736,7 +736,7 @@ def lims_query(query):
 
         >> lims_query('select * from ophys_experiments where id = 878358326')
 
-        returns a single line dataframe with all columns from the ophys_experiments table for ophys_experiment_id =  878358326
+        returns a single line dataframe with all columns from the ophys_experiments table for ecephys_session_id =  878358326
 
         >> lims_query('select * from ophys_sessions where id in (877907546, 876522267, 869118259)')
 
@@ -813,7 +813,7 @@ def get_cell_dff_data(search_dict={}, return_id=False):
                 max_correction_{up, down, left, right}: the maximum translation, in pixels, of this ROI during motion correction
                 valid_roi: boolean denoting whether the ROI was deemed valid after ROI filtering
             The following are appended and come from the pandas.describe() method on the deltaF/F (`dff`) trace for the cell
-                ophys_experiment_id: the associated ophys_experiment_id
+                ecephys_session_id: the associated ecephys_session_id
                 previous_cell_specimen_ids: a list of cell_specimen_ids associated with this ROI in previous cell_matchting runs (not exhaustive)
                 count: length of dff vector
                 mean: mean of dff vector

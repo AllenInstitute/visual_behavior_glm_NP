@@ -1,15 +1,14 @@
 import os 
 import json
-import numpy as np
-from copy import copy
-import datetime
 import shutil
+import datetime
+import numpy as np
+import pandas as pd
+from copy import copy
 from pathlib import Path
 
 from allensdk.brain_observatory.behavior.behavior_project_cache import \
     VisualBehaviorNeuropixelsProjectCache
-
-#import visual_behavior.data_access.loading as loading
 
 OUTPUT_DIR_BASE ='/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
 
@@ -210,7 +209,7 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,
         'L2_grid_num': 40,              # Number of L2 values for L2_optimize_by_cell, or L2_optimize_by_session
         'L2_grid_type':'linear',        # how to space L2 options, must be: 'log' or 'linear'
         'L2_cre_values':{'Slc17a7-IRES2-Cre':340, 'Vip-IRES-Cre':320,'Sst-IRES-Cre':185}, # Fixed values to use for optimize_by_cre 
-        'ophys_experiment_ids':experiment_table.index.values.tolist(),
+        'ecephys_session_ids':experiment_table.index.values.tolist(),
         'job_settings':job_settings,
         'split_on_engagement': False,   # If True, uses 'engagement_preference' to determine what engagement state to use
         'engagement_preference': None,  # Either None, "engaged", or "disengaged". Must be None if split_on_engagement is False

@@ -21,7 +21,7 @@ class GLM(object):
     '''
     GLM class
     inputs: 
-        ophys_experiment_id (int): ID of experiment to fit
+        ecephys_session_id (int): ID of experiment to fit
         version (int): version of code to use
        
         log_results (bool): if True, logs results to mongoDB
@@ -32,13 +32,13 @@ class GLM(object):
         inputs (List): if use_inputs, this must be a list of session, fit, and design objects
     '''
 
-    def __init__(self, ophys_experiment_id, version, log_results=True, log_weights=True,use_previous_fit=False, 
+    def __init__(self, ecephys_session_id, version, log_results=True, log_weights=True,use_previous_fit=False, 
                 recompute=True, use_inputs=False, inputs=None, NO_DROPOUTS=False, TESTING=False):
         
         self.version = version
-        self.ophys_experiment_id = ophys_experiment_id
-        self.ophys_session_id = db.lims_query('select ophys_session_id from ophys_experiments where id = {}'.format(self.ophys_experiment_id))
-        self.oeid = self.ophys_experiment_id
+        self.ecephys_session_id = ecephys_session_id
+        self.ophys_session_id = db.lims_query('select ophys_session_id from ophys_experiments where id = {}'.format(self.ecephys_session_id))
+        self.oeid = self.ecephys_session_id
         self.run_params = glm_params.load_run_json(self.version)
         self.kernels = self.run_params['kernels']
         self.current_model = 'Full'

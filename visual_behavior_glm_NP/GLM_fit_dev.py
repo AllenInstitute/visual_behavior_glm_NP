@@ -7,6 +7,9 @@ import visual_behavior_glm_NP.GLM_visualization_tools as gvt
 import visual_behavior_glm_NP.GLM_analysis_tools as gat
 import visual_behavior_glm_NP.GLM_schematic_plots as gsm
 import visual_behavior_glm_NP.GLM_fit_tools as gft
+from importlib import reload
+from alex_utils.alex_utils import *
+plt.ion()
 
 if False:
     # Make run JSON
@@ -28,8 +31,16 @@ if False:
     master_unit_table = glm_params.get_master_unit_table()
     
     # Get model information
+    version ='100_testing' 
     run_params = glm_params.load_run_json(version)
     inventory_table = gat.build_inventory_table()
+
+    # Fit results
+    oeid = experiment_table.index.values[0]
+    session, fit, design = gft.fit_experiment(oeid, run_params)
+
+
+
 
 
 ### DEV BELOW HERE
@@ -49,7 +60,7 @@ if False: # Code snippets for doing analyses.
 #    return g
 
 #def make_glm(fit, run_params, design, session):
-#    g = GLM(session.metadata['ophys_experiment_id'],run_params['version'], 
+#    g = GLM(session.metadata['ecephys_session_id'],run_params['version'], 
 #        log_results=False, log_weights=False, recompute=False, 
 #        use_inputs=True, inputs=[session, fit, design]
 #        )
@@ -75,7 +86,7 @@ if False: # Code snippets for doing analyses.
 
     # To run just one session:
     run_params = glm_params.load_run_json('4_L2_optimize_by_cell')
-    oeid = run_params['ophys_experiment_ids'][-1]
+    oeid = run_params['ecephys_session_ids'][-1]
 
     # Fit results
     session, fit, design = gft.fit_experiment(oeid, run_params)

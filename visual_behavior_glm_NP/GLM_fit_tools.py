@@ -23,14 +23,14 @@ import visual_behavior_glm_NP.GLM_analysis_tools as gat
 #import visual_behavior.data_access.loading as loading
 #import visual_behavior.data_access.reformat as reformat
 
-def load_fit_experiment(ophys_experiment_id, run_params):
+def load_fit_experiment(ecephys_session_id, run_params):
     '''
         Loads the session data, the fit dictionary and the design matrix for this oeid/run_params
     
         Will raise a FileNotFound Exception if the fit did not happen    
     
         INPUTS:
-        ophys_experiment_id,    oeid for this experiment
+        ecephys_session_id,    oeid for this experiment
         run_params,             dictionary of parameters for the fit version
         
         RETURNS:
@@ -38,8 +38,8 @@ def load_fit_experiment(ophys_experiment_id, run_params):
         fit         fit dictionary with model results
         design      DesignMatrix object for this experiment
     '''
-    fit = gat.load_fit_pkl(run_params, ophys_experiment_id)
-    session = load_data(ophys_experiment_id, run_params)
+    fit = gat.load_fit_pkl(run_params, ecephys_session_id)
+    session = load_data(ecephys_session_id, run_params)
     
     # num_weights gets populated during stimulus interpolation
     # configuring it here so the design matrix gets re-generated consistently
@@ -73,7 +73,7 @@ def check_run_fits(VERSION):
         experiment_table,   a dataframe with a boolean column 'GLM_fit' that says whether VERSION was fit for that experiment id
     '''
     run_params = load_run_json(VERSION)
-    experiment_table = pd.read_csv(run_params['experiment_table_path']).reset_index(drop=True).set_index('ophys_experiment_id')
+    experiment_table = pd.read_csv(run_params['experiment_table_path']).reset_index(drop=True).set_index('ecephys_session_id')
     experiment_table['GLM_fit'] = False
     for index, oeid in enumerate(experiment_table.index.values):
         filenamepkl = run_params['experiment_output_dir']+str(oeid)+".pkl" 
@@ -105,7 +105,7 @@ def setup_cv(fit,run_params):
 
 def fit_experiment(oeid, run_params, NO_DROPOUTS=False, TESTING=False):
     '''
-        Fits the GLM to the ophys_experiment_id
+        Fits the GLM to the ecephys_session_id
         
         Inputs:
         oeid            experiment to fit
@@ -120,7 +120,7 @@ def fit_experiment(oeid, run_params, NO_DROPOUTS=False, TESTING=False):
     '''
     
     # Log oeid
-    print("Fitting ophys_experiment_id: "+str(oeid)) 
+    print("Fitting ecephys_session_id: "+str(oeid)) 
     if run_params['version_type'] == 'production':
         print('Production fit, will include all dropouts, and shuffle analysis')
     elif run_params['version_type'] == 'standard':
@@ -933,7 +933,7 @@ def load_data(oeid, run_params):
     '''
         Allen SDK dataset is an attribute of this object (session)
         Keyword arguments:
-            oeid (int) -- ophys_experiment_id
+            oeid (int) -- ecephys_session_id
             run_params (dict) -- dictionary of parameters
     '''
 
@@ -1506,7 +1506,7 @@ def add_continuous_kernel_by_label(kernel_name, design, run_params, session,fit)
             'error_type': 'kernel', 
             'kernel_name': kernel_name, 
             'exception':e.args[0], 
-            'oeid':session.metadata['ophys_experiment_id'], 
+            'oeid':session.metadata['ecephys_session_id'], 
             'glm_version':run_params['version']
         }
         # log error to mongo
@@ -1636,7 +1636,7 @@ def add_discrete_kernel_by_label(kernel_name,design, run_params,session,fit):
             'error_type': 'kernel', 
             'kernel_name': kernel_name, 
             'exception':e.args[0], 
-            'oeid':session.metadata['ophys_experiment_id'], 
+            'oeid':session.metadata['ecephys_session_id'], 
             'glm_version':run_params['version']
         }
         # log error to mongo:
