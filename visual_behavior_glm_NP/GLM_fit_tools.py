@@ -1083,18 +1083,10 @@ def extract_and_annotate_ephys(session, run_params, TESTING=False):
         processes spike times into spike counts for each time bin
     '''
 
-    # Determine relevant stimuli for this fit
-    if run_params['active']:
-        session.filtered_stimulus = \
-            session.stimulus_presentations.query('active').copy()
-    else:
-        session.filtered_stimulus = \
-            session.stimulus_presentations.query('stimulus_block == 5').copy()
+    session = active_passive_split(session,run_params)
     
     fit = dict()
     fit = establish_ephys_timebins(fit,session, run_params)
-    return fit
-
     fit = process_ephys_data(fit, session, run_params, TESTING)
     
     # If we are splitting on engagement, then determine the engagement timepoints
@@ -1106,6 +1098,16 @@ def extract_and_annotate_ephys(session, run_params, TESTING=False):
         fit['ok_to_fit_preferred_engagement'] = True
     
     return fit, run_params
+
+def active_passive_split(session,run_params):
+    # Determine relevant stimuli for this fit
+    if run_params['active']:
+        session.filtered_stimulus = \
+            session.stimulus_presentations.query('active').copy()
+    else:
+        session.filtered_stimulus = \
+            session.stimulus_presentations.query('stimulus_block == 5').copy()   
+    return session
 
 def establish_ephys_timebins(fit, session, run_params):
     '''
@@ -1140,8 +1142,6 @@ def establish_ephys_timebins(fit, session, run_params):
 
 def process_ephys_data(fit, session, run_params, TESTING = False):
 
-    step = np.mean(np.diff(fit['fit_trace_timestamps']))
-    fit['fit_trace_bins'] = np.concatenate([fit['fit_trace_timestamps'],[fit['fit_trace_timestamps'][-1]+step]])-step*.5     
 
     return fit
 
