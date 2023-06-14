@@ -140,7 +140,7 @@ def fit_experiment(oeid, run_params, NO_DROPOUTS=False, TESTING=False):
 
     # Processing df/f data
     print('Processing df/f data')
-    fit,run_params = extract_and_annotate_ophys(session,run_params, TESTING=TESTING)
+    fit,run_params = extract_and_annotate_ephys(session,run_params, TESTING=TESTING)
 
     # Make Design Matrix
     print('Build Design Matrix')
@@ -995,6 +995,7 @@ def process_eye_data(session,run_params,ophys_timestamps=None):
     return ophys_eye 
 
 
+
 def process_data(session, run_params, TESTING=False):
     '''
     Processes dff traces by trimming off portions of recording session outside of the task period. These include:
@@ -1074,6 +1075,40 @@ def extract_and_annotate_ophys(session, run_params, TESTING=False):
     else:
         fit['ok_to_fit_preferred_engagement'] = True
     return fit, run_params
+
+def extract_and_annotate_ephys(session, run_params, TESTING=False):
+    '''
+        Creates the fit dictionary
+        establishes time bins
+        processes spike times into spike counts for each time bin
+    '''
+    
+    fit = dict()
+    fit = establish_ephys_timebins(fit,session, run_params)
+    fit = process_ephys_data(fit, session, run_params, TESTING)
+    
+    # If we are splitting on engagement, then determine the engagement timepoints
+    if run_params['split_on_engagement']:
+        print('Adding Engagement labels. Preferred engagement state: '+run_params['engagement_preference'])
+        fit = add_engagement_labels(fit, session, run_params)
+    else:
+        fit['ok_to_fit_preferred_engagement'] = True
+    
+    return fit, run_params
+
+def establish_ephys_timebins(fit, session, run_params):
+    '''
+        Establish the timebins using alot of the same logic as interpolate to stimulus
+        make sure timebins don't overlap, etc.
+    '''
+    return fit
+
+def process_ephys_data(fit, session, run_params, TESTING = False):
+
+    step = np.mean(np.diff(fit['fit_trace_timestamps']))
+    fit['fit_trace_bins'] = np.concatenate([fit['fit_trace_timestamps'],[fit['fit_trace_timestamps'][-1]+step]])-step*.5     
+
+    return fit
 
 def interpolate_to_stimulus(fit, session, run_params):
     '''
