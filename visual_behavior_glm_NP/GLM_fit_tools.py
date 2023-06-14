@@ -20,8 +20,7 @@ from sklearn.linear_model import LassoLars
 from sklearn.linear_model import SGDRegressor
 
 import visual_behavior_glm_NP.GLM_analysis_tools as gat
-#import visual_behavior.data_access.loading as loading
-#import visual_behavior.data_access.reformat as reformat
+import visual_behavior_glm_NP.GLM_params as glm_params
 
 def load_fit_experiment(ecephys_session_id, run_params):
     '''
@@ -39,7 +38,7 @@ def load_fit_experiment(ecephys_session_id, run_params):
         design      DesignMatrix object for this experiment
     '''
     fit = gat.load_fit_pkl(run_params, ecephys_session_id)
-    session = load_data(ecephys_session_id, run_params)
+    session = load_data(ecephys_session_id)
     
     # num_weights gets populated during stimulus interpolation
     # configuring it here so the design matrix gets re-generated consistently
@@ -137,7 +136,7 @@ def fit_experiment(oeid, run_params, NO_DROPOUTS=False, TESTING=False):
 
     # Load Data
     print('Loading data')
-    session = load_data(oeid, run_params)
+    session = load_data(oeid)
 
     # Processing df/f data
     print('Processing df/f data')
@@ -929,22 +928,16 @@ def L2_report(fit):
     plt.plot([0,1],[0,1],'k--')
     return results
  
-def load_data(oeid, run_params):
+def load_data(oeid):
     '''
-        Allen SDK dataset is an attribute of this object (session)
+        Allen SDK session
         Keyword arguments:
             oeid (int) -- ecephys_session_id
-            run_params (dict) -- dictionary of parameters
     '''
+    cache = glm_params.get_cache()
+    session = cache.get_ecephys_session(oeid)
+    return session
 
-    if ('include_invalid_rois' in run_params):
-        include_invalid_rois = (run_params['include_invalid_rois'])
-    else:
-        include_invalid_rois = False
-
-    dataset = loading.get_ophys_dataset(oeid, include_invalid_rois=include_invalid_rois)
-
-    return dataset
 
 def process_behavior_predictions(session, ophys_timestamps=None, cutoff_threshold=0.01):
     '''

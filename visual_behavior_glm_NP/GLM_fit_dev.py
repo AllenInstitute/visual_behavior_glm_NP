@@ -14,7 +14,7 @@ plt.ion()
 if False:
     # Make run JSON
     #####################
-    VERSION = 100
+    VERSION = '100_testing'
     src_path = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/visual_behavior_glm_NP/' 
     glm_params.make_run_json(
         VERSION,
