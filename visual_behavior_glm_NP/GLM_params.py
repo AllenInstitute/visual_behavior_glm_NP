@@ -231,6 +231,7 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,
         'dropout_threshold':0.005,      # Minimum variance explained by full model
         'version_type':'production',      # Should be either 'production' (run everything), 'standard' (run standard dropouts), 'minimal' (just full model)
         'active': True,                 # Are we fitting the active behavior (True) or passive (False)
+        'spike_bin_width':50,           # Duration of spike bins in ms. Must be cleanly divide 750ms
     } 
 
     # Define Kernels and dropouts
@@ -240,6 +241,8 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,
     run_params['kernels']=kernels
     run_params['dropouts']=dropouts
 
+    # Check spike bin width
+    assert np.mod(750, run_params['spike_bin_width']) == 0,"Spike bin width must cleanly divide 750ms stimulus interval" 
 
     # Regularization parameter checks 
     a = run_params['L2_optimize_by_cell'] 

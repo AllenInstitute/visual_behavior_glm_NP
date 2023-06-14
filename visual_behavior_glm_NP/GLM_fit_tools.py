@@ -1082,6 +1082,14 @@ def extract_and_annotate_ephys(session, run_params, TESTING=False):
         establishes time bins
         processes spike times into spike counts for each time bin
     '''
+
+    # Determine relevant stimuli for this fit
+    if run_params['active']:
+        session.filtered_stimulus = \
+            session.stimulus_presentations.query('active').copy()
+    else:
+        session.filtered_stimulus = \
+            session.stimulus_presentations.query('stimulus_block == 5').copy()
     
     fit = dict()
     fit = establish_ephys_timebins(fit,session, run_params)
@@ -1089,7 +1097,8 @@ def extract_and_annotate_ephys(session, run_params, TESTING=False):
     
     # If we are splitting on engagement, then determine the engagement timepoints
     if run_params['split_on_engagement']:
-        print('Adding Engagement labels. Preferred engagement state: '+run_params['engagement_preference'])
+        print('Adding Engagement labels. Preferred engagement state: '+\
+            run_params['engagement_preference'])
         fit = add_engagement_labels(fit, session, run_params)
     else:
         fit['ok_to_fit_preferred_engagement'] = True
@@ -1101,6 +1110,9 @@ def establish_ephys_timebins(fit, session, run_params):
         Establish the timebins using alot of the same logic as interpolate to stimulus
         make sure timebins don't overlap, etc.
     '''
+    start_time = session.filtered_stimulus.iloc[0].start_time
+    end_time = session.filtered_stimulus.iloc[-1].start_time + 0.75
+
     return fit
 
 def process_ephys_data(fit, session, run_params, TESTING = False):
