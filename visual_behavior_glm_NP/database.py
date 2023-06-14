@@ -66,6 +66,7 @@ class Database(object):
 
 
 def get_psql_dict_cursor():
+    raise Exception('outdated') 
     """Set up a connection to a psql db server with a dict cursor"""
     api = (credential_injector(LIMS_DB_CREDENTIAL_MAP)(PostgresQueryMixin)())
     con = api.get_connection()
@@ -74,6 +75,7 @@ def get_psql_dict_cursor():
 
 
 def get_behavior_data(table_name, session_id=None, id_type='behavior_session_uuid'):
+    raise Exception('outdated') 
     '''
     look up behavior data for a given behavior session
     look up by behavior_session_uuid or behavior_session_id (the latter is the LIMS ID)
@@ -113,6 +115,7 @@ def get_behavior_data(table_name, session_id=None, id_type='behavior_session_uui
 
 
 def _check_name_schema(database, session_id, id_type):
+    raise Exception('outdated') 
     '''
     lims_id (aka behavior_session_id) should be int
     behavior_session_uuid should be string
@@ -130,6 +133,7 @@ def _check_name_schema(database, session_id, id_type):
 
 
 def _get_table(db, table_name, session_id=None, id_type='behavior_session_uuid', db_name='behavior_data', return_as='dataframe'):
+    raise Exception('outdated') 
     '''
     a general function for getting behavior data tables
     special cases:
@@ -151,6 +155,7 @@ def _get_table(db, table_name, session_id=None, id_type='behavior_session_uuid',
 
 
 def _get_trials(db, table_name, session_id=None, id_type='behavior_session_uuid', db_name='behavior_data'):
+    raise Exception('outdated') 
     '''
     get trials table for a given session
     '''
@@ -159,6 +164,7 @@ def _get_trials(db, table_name, session_id=None, id_type='behavior_session_uuid'
 
 
 def get_behavior_session_summary(exclude_error_sessions=True):
+    raise Exception('outdated') 
     '''
     a convenience function to get the summary dataframe from the visual behavior database
     by default: sessions that VBA could not load are excluded
@@ -173,6 +179,7 @@ def get_behavior_session_summary(exclude_error_sessions=True):
 
 
 def get_pkl_path(session_id=None, id_type='behavior_session_id'):
+    raise Exception('outdated') 
     '''
     get the path to a pkl file for a given session
     '''
@@ -185,6 +192,7 @@ def get_pkl_path(session_id=None, id_type='behavior_session_id'):
 
 
 def get_value_from_table(search_key, search_value, target_table, target_key):
+    raise Exception('outdated') 
     '''
     a general function for getting a value from a LIMS table
     '''
@@ -203,6 +211,7 @@ def get_value_from_table(search_key, search_value, target_table, target_key):
 
 
 def populate_id_dict(input_id_dict):
+    raise Exception('outdated') 
     '''
     an ophys session has 5 different keys by which it can be identified
     this function will take an input key/value pair that represents one possible ID and returns a dictionary containing all IDs
@@ -281,6 +290,7 @@ def populate_id_dict(input_id_dict):
 
 
 def get_alternate_ids(uuid):
+    raise Exception('outdated') 
     '''
     get all LIMS ids for a given session UUID
     '''
@@ -288,6 +298,7 @@ def get_alternate_ids(uuid):
 
 
 def convert_id(input_dict, desired_key):
+    raise Exception('outdated') 
     '''
     an ophys session has 5 different keys by which it can be identified
     this function will convert between keys.
@@ -324,6 +335,7 @@ def convert_id(input_dict, desired_key):
 
 
 def get_mouseseeks_qc_results(session_id=None, id_type='behavior_session_uuid'):
+    raise Exception('outdated') 
     '''get qc results from mouseseeks'''
     session_id, id_type = _check_name_schema('mouseseeks', session_id, id_type)
     if id_type == 'foraging_id':
@@ -337,26 +349,32 @@ def get_mouseseeks_qc_results(session_id=None, id_type='behavior_session_uuid'):
 
 
 def is_int(n):
+    raise Exception('outdated') 
     return isinstance(n, (int, np.integer))
 
 
 def is_float(n):
+    raise Exception('outdated') 
     return isinstance(n, (float, np.float))
 
 
 def is_uuid(n):
+    raise Exception('outdated') 
     return isinstance(n, uuid.UUID)
 
 
 def is_bool(n):
+    raise Exception('outdated') 
     return isinstance(n, (bool, np.bool_))
 
 
 def is_array(n):
+    raise Exception('outdated') 
     return isinstance(n, np.ndarray)
 
 
 def add_behavior_record(behavior_session_uuid=None, pkl_path=None, overwrite=False, db_connection=None, db_name='behavior_data', data_type='foraging2'):
+    raise Exception('outdated') 
     '''
     for a given behavior_session_uuid:
       - opens the data with VBA
@@ -519,6 +537,7 @@ def add_behavior_record(behavior_session_uuid=None, pkl_path=None, overwrite=Fal
 
 
 def get_manifest(server='visual_behavior_data'):
+    raise Exception('outdated') 
     '''
     convenience function to get full manifest
     '''
@@ -529,6 +548,7 @@ def get_manifest(server='visual_behavior_data'):
 
 
 def get_well_known_files(session_id, attachable_id_type='OphysSession'):
+    raise Exception('outdated') 
     '''
     return well_known_files table with names as index
     inputs:
@@ -598,6 +618,7 @@ def update_or_create(collection, document, keys_to_check, force_write=False):
 
 
 def get_labtracks_id_from_specimen_id(specimen_id, show_warnings=True):
+    raise Exception('outdated') 
     '''
     for a given mouse:
         convert
@@ -625,6 +646,7 @@ def get_labtracks_id_from_specimen_id(specimen_id, show_warnings=True):
 
 
 def get_specimen_id_from_labtracks_id(labtracks_id, show_warnings=True):
+    raise Exception('outdated') 
     '''
     for a given mouse:
         convert
@@ -652,6 +674,7 @@ def get_specimen_id_from_labtracks_id(labtracks_id, show_warnings=True):
 
 
 def get_mouse_ids(id_type, id_number):
+    raise Exception('outdated') 
     '''
     returns a dataframe of all variations of mouse ID for a given input ID
 
@@ -698,6 +721,7 @@ def get_mouse_ids(id_type, id_number):
 
 
 def lims_query(query):
+    raise Exception('outdated') 
     '''
     execute a SQL query in LIMS
     returns:
@@ -738,6 +762,7 @@ def lims_query(query):
 
 
 def log_cell_dff_data(record):
+    raise Exception('outdated') 
     '''
     writes a cell record to 'dff_summary' collection in 'ophys_data' mongo database
     record should contain stats about the cell's deltaF/F trace
@@ -766,6 +791,7 @@ def log_cell_dff_data(record):
 
 
 def get_cell_dff_data(search_dict={}, return_id=False):
+    raise Exception('outdated') 
     '''
     retrieve information from the 'dff_summary' collection in 'ophys_data' mongo database
     pass in a `search_dict` to constrain the search

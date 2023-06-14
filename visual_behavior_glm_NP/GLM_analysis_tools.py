@@ -458,6 +458,9 @@ def get_stdout_summary(glm_version):
     collection = conn['np_glm']['cluster_stdout']
     stdout_summary = pd.DataFrame(list(collection.find({'glm_version':glm_version})))
     conn.close()
+    if len(stdout_summary) == 0:
+        print('no stdout results')
+        return
 
     # parse the walltime column
     stdout_summary['required_walltime_seconds'] = stdout_summary['required_walltime'].map(lambda walltime_str: walltime_to_seconds(walltime_str))
