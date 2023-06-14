@@ -37,8 +37,7 @@ class GLM(object):
         
         self.version = version
         self.ecephys_session_id = ecephys_session_id
-        self.ophys_session_id = db.lims_query('select ophys_session_id from ophys_experiments where id = {}'.format(self.ecephys_session_id))
-        self.oeid = self.ecephys_session_id
+        self.oeid = ecephys_session_id
         self.run_params = glm_params.load_run_json(self.version)
         self.kernels = self.run_params['kernels']
         self.current_model = 'Full'
