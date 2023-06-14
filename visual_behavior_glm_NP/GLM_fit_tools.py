@@ -102,7 +102,7 @@ def setup_cv(fit,run_params):
     fit['ridge_splits'] = split_time(fit['fit_trace_timestamps'], output_splits=run_params['CV_splits'], subsplits_per_split=run_params['CV_subsplits'])
     return fit
 
-def fit_experiment(oeid, run_params, NO_DROPOUTS=False, TESTING=False):
+def fit_experiment(oeid, run_params, NO_DROPOUTS=False):
     '''
         Fits the GLM to the ecephys_session_id
         
@@ -110,7 +110,6 @@ def fit_experiment(oeid, run_params, NO_DROPOUTS=False, TESTING=False):
         oeid            experiment to fit
         run_params      dictionary of parameters for this fit
         NO_DROPOUTS     if True, does not perform dropout analysis
-        TESTING         if True, fits only the first 6 cells in the experiment
     
         Returns:
         session         the VBA session object for this experiment
@@ -131,16 +130,13 @@ def fit_experiment(oeid, run_params, NO_DROPOUTS=False, TESTING=False):
     if NO_DROPOUTS:
         print('WARNING! NO_DROPOUTS=True in fit_experiment(), dropout analysis will NOT run, despite version_type')
 
-    if TESTING:
-        print('WARNING! TESTING=True in fit_experiment(), will only fit the first 6 cells of this experiment')
-
     # Load Data
     print('Loading data')
     session = load_data(oeid)
 
     # Processing df/f data
     print('Processing df/f data')
-    fit, run_params = extract_and_annotate_ephys(session,run_params, TESTING=TESTING)
+    fit, run_params = extract_and_annotate_ephys(session,run_params)
 
     # Make Design Matrix
     print('Build Design Matrix')
@@ -995,7 +991,7 @@ def process_eye_data(session,run_params,ophys_timestamps=None):
     return ophys_eye 
 
 
-def extract_and_annotate_ephys(session, run_params, TESTING=False):
+def extract_and_annotate_ephys(session, run_params):
     '''
         Creates the fit dictionary
         establishes time bins
@@ -1005,7 +1001,7 @@ def extract_and_annotate_ephys(session, run_params, TESTING=False):
     fit = dict()
     session = active_passive_split(session,run_params)
     fit = establish_ephys_timebins(fit,session, run_params)
-    fit = process_ephys_data(fit, session, run_params, TESTING)
+    fit = process_ephys_data(fit, session, run_params)
 
     # If we are splitting on engagement, then determine the engagement timepoints
     if run_params['split_on_engagement']:
@@ -1060,7 +1056,7 @@ def establish_ephys_timebins(fit, session, run_params):
     fit['spike_bin_width'] = run_params['spike_bin_width']
     return fit
 
-def process_ephys_data(fit, session, run_params, TESTING = False):
+def process_ephys_data(fit, session, run_params):
     # Grab units and spikes from session object
     units = session.get_units()
     channels = session.get_channels()
@@ -1906,7 +1902,8 @@ def split_by_engagement(design, run_params, session, fit):
     # If we aren't splitting by engagement, do nothing and return
     if not run_params['split_on_engagement']:
         return design, fit
-    
+   
+    raise Exception('need to implement') 
     print('Splitting fit dictionary entries by engagement')
 
     # Set up time arrays, and dff/events arrays to match engagement preference
