@@ -85,21 +85,31 @@ def check_weight_lengths(fit,design):
         Does two assertion tests that the number of weights in the design matrix and fit dictionary are 
         consistent with the number of timesteps per stimulus
     '''
-    num_weights_per_stimulus = fit['stimulus_interpolation']['timesteps_per_stimulus']
-    num_weights_design = len([x for x in design.get_X().weights.values if x.startswith('image0')])
-    assert num_weights_design == num_weights_per_stimulus, "Number of weights in design matrix is incorrect"
+    num_weights_per_stimulus = fit['timesteps_per_stimulus']
+    num_weights_design = len([x for x in design.get_X().weights.values \
+        if x.startswith('image0')])
+    assert num_weights_design == num_weights_per_stimulus, \
+        "Number of weights in design matrix is incorrect"
     if ('dropouts' in fit) and ('train_weights' in fit['dropouts']['Full']):
-        num_weights_fit = len([x for x in fit['dropouts']['Full']['train_weights'].weights.values if x.startswith('image0')])
-        assert num_weights_fit == num_weights_per_stimulus, "Number of weights in fit dictionary is incorrect"
+        num_weights_fit = len([x for x in \
+            fit['dropouts']['Full']['train_weights'].weights.values \
+            if x.startswith('image0')])
+        assert num_weights_fit == num_weights_per_stimulus, \
+            "Number of weights in fit dictionary is incorrect"
     print('Checked weight/kernel lengths against timesteps per stimulus')
 
 def setup_cv(fit,run_params):
     '''
         Defines the time intervals for cross validation
-        Two sets of time intervals are generated, one for setting the ridge hyperparameter, the other for fitting the model
+        Two sets of time intervals are generated:
+            one for setting the ridge hyperparameter, the other for fitting the model
     '''
-    fit['splits'] = split_time(fit['fit_trace_timestamps'], output_splits=run_params['CV_splits'], subsplits_per_split=run_params['CV_subsplits'])
-    fit['ridge_splits'] = split_time(fit['fit_trace_timestamps'], output_splits=run_params['CV_splits'], subsplits_per_split=run_params['CV_subsplits'])
+    fit['splits'] = split_time(fit['bin_centers'], 
+        output_splits=run_params['CV_splits'], 
+        subsplits_per_split=run_params['CV_subsplits'])
+    fit['ridge_splits'] = split_time(fit['bin_centers'], 
+        output_splits=run_params['CV_splits'], 
+        subsplits_per_split=run_params['CV_subsplits'])
     return fit
 
 def fit_experiment(oeid, run_params, NO_DROPOUTS=False):
@@ -145,10 +155,7 @@ def fit_experiment(oeid, run_params, NO_DROPOUTS=False):
     # Add kernels
     design = add_kernels(design, run_params, session, fit) 
     check_weight_lengths(fit,design)
-
-    # Check Interpolation onto stimulus timestamps
-    if ('interpolate_to_stimulus' in run_params) and (run_params['interpolate_to_stimulus']):
-        check_image_kernel_alignment(design,run_params)
+    check_image_kernel_alignment(design,run_params)
 
     # split by engagement
     design,fit = split_by_engagement(design, run_params, session, fit)
