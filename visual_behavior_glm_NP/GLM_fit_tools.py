@@ -151,14 +151,10 @@ def fit_experiment(oeid, run_params, NO_DROPOUTS=False):
     # Make Design Matrix
     print('Build Design Matrix')
     design = DesignMatrix(fit) 
-
-    # Add kernels
     design = add_kernels(design, run_params, session, fit) 
-    check_weight_lengths(fit,design)
-    check_image_kernel_alignment(design,run_params)
 
     # split by engagement
-    design,fit = split_by_engagement(design, run_params, session, fit)
+    design, fit = split_by_engagement(design, run_params, session, fit)
 
     # Set up CV splits
     print('Setting up CV')
@@ -179,12 +175,6 @@ def fit_experiment(oeid, run_params, NO_DROPOUTS=False):
     print('Iterating over model selection')
     fit = evaluate_models(fit, design, run_params)
     check_weight_lengths(fit,design)
-
-    # Perform shuffle analysis, with two shuffle methods
-    if (not NO_DROPOUTS) and (fit['ok_to_fit_preferred_engagement']) and (run_params['version_type'] == 'production'):
-        print('Evaluating shuffle fits')
-        fit = evaluate_shuffle(fit, design, method='cells')
-        fit = evaluate_shuffle(fit, design, method='time')
 
     # Save fit dictionary to compressed pickle file
     print('Saving fit dictionary')
@@ -1504,14 +1494,17 @@ def add_kernels(design, run_params,session, fit):
         if run_params['kernels'][kernel_name]['type'] == 'discrete':
             design = add_discrete_kernel_by_label(kernel_name, design, run_params, session, fit)
         else:
-            design = add_continuous_kernel_by_label(kernel_name, design, run_params, session, fit)   
-
+            design = add_continuous_kernel_by_label(kernel_name, design, run_params, session, fit)  
     clean_failed_kernels(run_params)
+    check_weight_lengths(fit,design)
+    check_image_kernel_alignment(design,run_params)
+
     return design
 
 def clean_failed_kernels(run_params):
     '''
-        Modifies the model definition to handle any kernels that failed to fit during the add_kernel process
+        Modifies the model definition to handle any kernels that failed to fit during 
+        the add_kernel process
         Removes the failed kernels from run_params['kernels'], and run_params['dropouts']
     '''
     if run_params['failed_kernels']:
