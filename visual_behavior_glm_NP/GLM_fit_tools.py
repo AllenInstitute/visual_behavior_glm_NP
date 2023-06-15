@@ -51,7 +51,7 @@ def load_fit_experiment(ecephys_session_id, run_params):
         kernels_to_limit_per_image_cycle.append('passive_change')
     for k in kernels_to_limit_per_image_cycle:
         if k in run_params['kernels']:
-            run_params['kernels'][k]['num_weights'] = fit['stimulus_interpolation']['timesteps_per_stimulus']    
+            run_params['kernels'][k]['num_weights'] = fit['timesteps_per_stimulus']    
 
     design = DesignMatrix(fit)
     design = add_kernels(design, run_params, session,fit)
@@ -136,7 +136,7 @@ def fit_experiment(oeid, run_params, NO_DROPOUTS=False):
 
     # Processing df/f data
     print('Processing df/f data')
-    fit, run_params = extract_and_annotate_ephys(session,run_params)
+    session, fit, run_params = extract_and_annotate_ephys(session,run_params)
 
     # Make Design Matrix
     print('Build Design Matrix')
@@ -1012,7 +1012,7 @@ def extract_and_annotate_ephys(session, run_params):
     else:
         fit['ok_to_fit_preferred_engagement'] = True
     
-    return fit, run_params
+    return session, fit, run_params
 
 def active_passive_split(session,run_params):
     # Determine relevant stimuli for this fit
@@ -1022,6 +1022,7 @@ def active_passive_split(session,run_params):
     else:
         session.filtered_stimulus = \
             session.stimulus_presentations.query('stimulus_block == 5').copy()   
+    session = add_image_index(session)
     return session
 
 def establish_ephys_timebins(fit, session, run_params):
@@ -1054,6 +1055,22 @@ def establish_ephys_timebins(fit, session, run_params):
     fit['timebins'] = timebins
     fit['bin_centers'] = timebin_starts + step/2
     fit['spike_bin_width'] = run_params['spike_bin_width']
+    fit['timesteps_per_stimulus'] = bins_per_image
+    fit['timebin_vector'] = np.concatenate([fit['timebins'][:,0],[fit['timebins'][-1,1]]])
+
+    # Use the number of timesteps per stimulus to define the image kernel length
+    kernels_to_limit_per_image_cycle = \
+        ['image0','image1','image2','image3','image4','image5','image6','image7']
+    if 'post-omissions' in run_params['kernels']:
+        kernels_to_limit_per_image_cycle.append('omissions')
+    if 'post-hits' in run_params['kernels']:
+        kernels_to_limit_per_image_cycle.append('hits')
+        kernels_to_limit_per_image_cycle.append('misses')
+        kernels_to_limit_per_image_cycle.append('passive_change')
+    for k in kernels_to_limit_per_image_cycle:
+        if k in run_params['kernels']:
+            run_params['kernels'][k]['num_weights'] = fit['timesteps_per_stimulus']    
+
     return fit
 
 def process_ephys_data(fit, session, run_params):
@@ -1072,7 +1089,8 @@ def process_ephys_data(fit, session, run_params):
  
     # bin spikes 
     spikes = np.zeros([np.shape(fit['timebins'])[0],len(unit_channels)])
-    for index, unit in tqdm(enumerate(unit_channels.index.values),
+    print('HACK! just doing 5 units')
+    for index, unit in tqdm(enumerate(unit_channels.index.values[0:5]),
         total = len(unit_channels),desc='binning spikes'):
         spikes[:,index] = get_spike_counts(spike_times[unit],fit['timebins']) 
 
@@ -1086,6 +1104,9 @@ def process_ephys_data(fit, session, run_params):
         }
         )
     fit['spike_count_arr'] = spike_count_arr
+
+    # Check to make sure there are no NaNs in the fit_trace
+    assert np.isnan(fit['spike_count_arr']).sum() == 0, "Have NaNs in spike_count_arr"
 
     return fit
 
@@ -1166,6 +1187,7 @@ def add_rewards_each_flash_inner(stimulus_presentations_df, rewards_df,
 
     return rewards_each_flash
 
+# TODO REMOVE
 def interpolate_to_stimulus(fit, session, run_params):
     '''
         This function interpolates the neural signal (either dff or events) onto timestamps that are aligned to the stimulus.
@@ -1444,6 +1466,15 @@ def add_engagement_labels(fit, session, run_params):
         print('WARNING, insufficient time points in preferred engagement state. This model will not fit') 
     return fit
 
+def add_image_index(session):
+    images = np.sort(session.filtered_stimulus.image_name.unique())
+    image_index = {}
+    for index, image in enumerate(images):
+        image_index[image]=index
+    session.filtered_stimulus['image_index'] = \
+        [image_index[x] for x in session.filtered_stimulus['image_name']] 
+    return session    
+
 def add_kernels(design, run_params,session, fit):
     '''
         Iterates through the kernels in run_params['kernels'] and adds
@@ -1542,7 +1573,6 @@ def add_continuous_kernel_by_label(kernel_name, design, run_params, session,fit)
             running_df = session.running_speed
             running_df = running_df.rename(columns={'speed':'values'})
             timeseries = interpolate_to_ophys_timestamps(fit, running_df)['values'].values
-            #timeseries = standardize_inputs(timeseries, mean_center=False,unit_variance=False, max_value=run_params['max_run_speed'])
             timeseries = standardize_inputs(timeseries)
         elif event.startswith('face_motion'):
             PC_number = int(event.split('_')[-1])
@@ -1593,15 +1623,10 @@ def add_continuous_kernel_by_label(kernel_name, design, run_params, session,fit)
             'oeid':session.metadata['ecephys_session_id'], 
             'glm_version':run_params['version']
         }
-        # log error to mongo
-        gat.log_error(
-            run_params['kernel_error_dict'][kernel_name], 
-            keys_to_check = ['oeid', 'glm_version', 'kernel_name']
-        )
         return design
     else:
         #assert length of values is same as length of timestamps
-        assert len(timeseries) == fit['fit_trace_arr'].values.shape[0], 'Length of continuous regressor must match length of fit_trace_timestamps'
+        assert len(timeseries) == fit['spike_count_arr'].values.shape[0], 'Length of continuous regressor must match length of fit_trace_timestamps'
 
         # Add to design matrix
         design.add_kernel(
@@ -1674,33 +1699,34 @@ def add_discrete_kernel_by_label(kernel_name,design, run_params,session,fit):
             event_times = session.rewards['timestamps'].values
         elif event == 'change':
             #event_times = session.trials.query('go')['change_time'].values # This method drops auto-rewarded changes
-            event_times = session.stimulus_presentations.query('is_change')['start_time'].values
+            event_times = session.filtered_stimulus.query('is_change')['start_time'].values
             event_times = event_times[~np.isnan(event_times)]
-        elif event in ['hit', 'miss', 'false_alarm', 'correct_reject']:
-            if event == 'hit': # Includes auto-rewarded changes as hits, since they include a reward. 
-                event_times = session.trials.query('hit or auto_rewarded')['change_time'].values           
-            else:
-                event_times = session.trials.query(event)['change_time'].values
+        elif event in ['hit', 'miss']:
+            if event == 'hit': # Includes auto-rewarded changes as hits 
+                #event_times = session.trials.query('hit or auto_rewarded')['change_time'].values
+                event_times = session.filtered_stimulus.query('is_change & rewarded',engine='python')['start_time'].values 
+            elif event == 'miss':
+                event_times = session.filtered_stimulus.query('is_change & ~rewarded',engine='python')['start_time'].values
             event_times = event_times[~np.isnan(event_times)]
             if len(session.rewards) < 5: ## HARD CODING THIS VALUE
                 raise Exception('Trial type regressors arent defined for passive sessions (sessions with less than 5 rewards)')
         elif event == 'passive_change':
             if len(session.rewards) > 5: 
                 raise Exception('\tPassive Change kernel cant be added to active sessions')               
-            event_times = session.stimulus_presentations.query('is_change')['start_time'].values
+            event_times = session.filtered_stimulus.query('is_change')['start_time'].values
             event_times = event_times[~np.isnan(event_times)]           
         elif event == 'any-image':
-            event_times = session.stimulus_presentations.query('not omitted')['start_time'].values
+            event_times = session.filtered_stimulus.query('not omitted')['start_time'].values
         elif event == 'image_expectation':
-            event_times = session.stimulus_presentations['start_time'].values
+            event_times = session.filtered_stimulus['start_time'].values
             # Append last image
             event_times = np.concatenate([event_times,[event_times[-1]+.75]])
         elif event == 'omissions':
-            event_times = session.stimulus_presentations.query('omitted')['start_time'].values
+            event_times = session.filtered_stimulus.query('omitted',engine='python')['start_time'].values
         elif (len(event)>5) & (event[0:5] == 'image') & ('change' not in event):
-            event_times = session.stimulus_presentations.query('image_index == {}'.format(int(event[-1])))['start_time'].values
+            event_times = session.filtered_stimulus.query('image_index == {}'.format(int(event[-1])))['start_time'].values
         elif (len(event)>5) & (event[0:5] == 'image') & ('change' in event):
-            event_times = session.stimulus_presentations.query('is_change & (image_index == {})'.format(int(event[-1])))['start_time'].values
+            event_times = session.filtered_stimulus.query('is_change & (image_index == {})'.format(int(event[-1])))['start_time'].values
         else:
             raise Exception('\tCould not resolve kernel label')
 
@@ -1723,14 +1749,9 @@ def add_discrete_kernel_by_label(kernel_name,design, run_params,session,fit):
             'oeid':session.metadata['ecephys_session_id'], 
             'glm_version':run_params['version']
         }
-        # log error to mongo:
-        gat.log_error(
-            run_params['kernel_error_dict'][kernel_name], 
-            keys_to_check = ['oeid', 'glm_version', 'kernel_name']
-        )        
         return design       
     else:
-        events_vec, timestamps = np.histogram(event_times, bins=fit['fit_trace_bins'])
+        events_vec, timestamps = np.histogram(event_times, bins=fit['timebin_vector'])
     
         if (event == 'lick_bouts') or (event == 'licks'): 
             # Force this to be 0 or 1, since we purposefully over-tiled the space. 
@@ -2005,8 +2026,8 @@ def interpolate_to_ophys_timestamps(fit,df):
     )
 
     interpolated = pd.DataFrame({
-        'timestamps':fit['fit_trace_timestamps'],
-        'values':f(fit['fit_trace_timestamps'])
+        'timestamps':fit['bin_centers'],
+        'values':f(fit['bin_centers'])
     })
 
     return interpolated

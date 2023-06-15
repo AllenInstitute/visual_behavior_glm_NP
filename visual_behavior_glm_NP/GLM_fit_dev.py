@@ -33,11 +33,19 @@ if False:
     # Get model information
     version ='100_testing' 
     run_params = glm_params.load_run_json(version)
+    run_params['spike_bin_width'] = 0.050
     inventory_table = gat.build_inventory_table()
 
     # Fit results
     oeid = experiment_table.index.values[0]
     session, fit, design = gft.fit_experiment(oeid, run_params)
+
+    session = gft.load_data(oeid)
+    fit, run_params = gft.extract_and_annotate_ephys(session,run_params)
+    design = gft.DesignMatrix(fit) 
+    design = gft.add_kernels(design, run_params, session, fit) 
+    gft.check_weight_lengths(fit,design)
+
 
 
 
