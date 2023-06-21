@@ -115,7 +115,7 @@ def generate_results_summary(glm):
     dropout_summary = pd.merge(
         nonadj_dropout_summary, 
         adj_dropout_summary,
-        on=['dropout', 'cell_specimen_id']
+        on=['dropout', 'unit_id']
     ).reset_index()
     dropout_summary.columns.name = None
     return dropout_summary
@@ -151,7 +151,7 @@ def generate_results_summary_adj(glm):
         })
  
         # add the cell id info
-        results_summary['cell_specimen_id'] = cell_specimen_id
+        results_summary['unit_id'] = cell_specimen_id
          
         # pack up
         results_summary_list.append(results_summary)
@@ -194,7 +194,7 @@ def generate_results_summary_nonadj(glm):
             'dropout':'fraction_change_from_full'})
  
         # add the cell id info
-        results_summary['cell_specimen_id'] = cell_specimen_id
+        results_summary['unit_id'] = cell_specimen_id
          
         # pack up
         results_summary_list.append(results_summary)
@@ -225,7 +225,7 @@ def generate_results_summary_non_cleaned(glm):
 
         results_summary['fraction_change_from_full'] = results_summary.apply(calculate_fractional_change, axis=1)
         results_summary['absolute_change_from_full'] = results_summary.apply(calculate_absolute_change, axis=1)
-        results_summary['cell_specimen_id'] = cell_specimen_id
+        results_summary['unit_id'] = cell_specimen_id
         results_summary_list.append(results_summary)
     return pd.concat(results_summary_list)
 
@@ -290,19 +290,15 @@ def log_results_to_mongo(glm):
     results_summary = glm.dropout_summary
 
     full_results['glm_version'] = str(glm.version)
-    results_summary['glm_version'] = str(glm.version)
-
-    results_summary['ecephys_session_id'] = glm.ecephys_session_id
-    results_summary['ophys_session_id'] = glm.ophys_session_id
-
     full_results['ecephys_session_id'] = glm.ecephys_session_id
-    full_results['ophys_session_id'] = glm.ophys_session_id
+    results_summary['glm_version'] = str(glm.version)
+    results_summary['ecephys_session_id'] = glm.ecephys_session_id
 
     conn = db.Database('visual_behavior_data')
 
     keys_to_check = {
-        'results_full':['ecephys_session_id','cell_specimen_id','glm_version'],
-        'results_summary':['ecephys_session_id','cell_specimen_id', 'dropout','glm_version']
+        'results_full':['ecephys_session_id','unit_id','glm_version'],
+        'results_summary':['ecephys_session_id','unit_id', 'dropout','glm_version']
     }
 
     for df,collection in zip([full_results, results_summary], ['results_full','results_summary']):

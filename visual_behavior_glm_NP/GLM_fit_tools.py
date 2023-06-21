@@ -39,6 +39,7 @@ def load_fit_experiment(ecephys_session_id, run_params):
     '''
     fit = gat.load_fit_pkl(run_params, ecephys_session_id)
     session = load_data(ecephys_session_id)
+    session = active_passive_split(session,run_params)
     
     # num_weights gets populated during stimulus interpolation
     # configuring it here so the design matrix gets re-generated consistently
@@ -736,8 +737,8 @@ def build_dataframe_from_dropouts(fit,run_params):
         Columns: Average (across CV folds) variance explained on the test and training sets for each model defined in fit['dropouts']
     '''
         
-    cellids = fit['fit_trace_arr']['cell_specimen_id'].values
-    results = pd.DataFrame(index=pd.Index(cellids, name='cell_specimen_id'))
+    cellids = fit['spike_count_arr']['unit_id'].values
+    results = pd.DataFrame(index=pd.Index(cellids, name='unit_id'))
     
     # Determines the minimum variance explained for the full model
     if 'dropout_threshold' in run_params:
@@ -752,14 +753,14 @@ def build_dataframe_from_dropouts(fit,run_params):
         compute_with_infs = True
 
     # Check for cells with no activity in entire trace
-    nan_cells = np.where(np.all(fit['fit_trace_arr'] == 0, axis=0))[0]
+    nan_cells = np.where(np.all(fit['spike_count_arr'] == 0, axis=0))[0]
     if len(nan_cells) > 0:
-        print('I found {} cells with all 0 in the fit_trace_arr'.format(len(nan_cells)))
+        print('I found {} cells with all 0 in the spike_count_arr'.format(len(nan_cells)))
         if not run_params['use_events']:
             raise Exception('All 0 in df/f trace')
         else:
             print('Setting Variance Explained to 0')
-            fit['nan_cell_ids'] = fit['fit_trace_arr'].cell_specimen_id.values[nan_cells]
+            fit['nan_cell_ids'] = fit['spike_count_arr'].cell_specimen_id.values[nan_cells]
  
     # Iterate over models
     for model_label in fit['dropouts'].keys():
@@ -908,7 +909,7 @@ def L2_report(fit):
     plt.axvline(fit['avg_L2_regularization'], color='k', linestyle='--', alpha = 0.5)
     plt.ylim(0,.15) 
 
-    cellids = fit['fit_trace_arr']['cell_specimen_id'].values
+    cellids = fit['spike_count_arr']['cell_specimen_id'].values
     results = pd.DataFrame(index=cellids)
     for index, value in enumerate(fit['L2_grid']):
         results["cv_train_"+str(index)] = fit['L2_train_cv'][:,index]
@@ -979,8 +980,8 @@ def process_eye_data(session,run_params,ophys_timestamps=None):
             ophys_eye[column].fillna(method='ffill',inplace=True)
             if column in z_score:
                 ophys_eye[column+'_zscore'] = scipy.stats.zscore(ophys_eye[column],nan_policy='omit')
-    print('                 : '+'Mean Centering')
-    print('                 : '+'Standardized to unit variance')
+    print('                 : '+'mean centering')
+    print('                 : '+'standardized to unit variance')
     return ophys_eye 
 
 
@@ -1351,7 +1352,7 @@ def check_image_kernel_alignment(design,run_params):
     elif overlap > 1:
         print('Image kernels overlap, but within tolerance: {}, {}'.format(overlap, tolerance))
     else:
-        print('No Image kernel overlap: {}'.format(overlap))
+        print('No image kernel overlap: {}'.format(overlap))
     print('Passed all interpolation checks')
 
 
@@ -1611,7 +1612,7 @@ def add_continuous_kernel_by_label(kernel_name, design, run_params, session,fit)
             raise Exception('Could not resolve kernel label')
     except Exception as e:
         print('\tError encountered while adding kernel for '+kernel_name+'. \n'+\
-            'Attemping to continue without this kernel.' )
+            '\tAttempting to continue without this kernel.' )
         print(e)
         # Need to remove from relevant lists
         run_params['failed_kernels'].add(kernel_name)      
@@ -1654,13 +1655,13 @@ def standardize_inputs(timeseries, mean_center=True, unit_variance=True,max_valu
         raise Exception('Cannot perform max_value standardization and mean_center or unit_variance standardizations together.')
 
     if mean_center:
-        print('                 : '+'Mean Centering')
+        print('                 : '+'mean centering')
         timeseries = timeseries -np.mean(timeseries) # mean center
     if unit_variance:
-        print('                 : '+'Standardized to unit variance')
+        print('                 : '+'standardized to unit variance')
         timeseries = timeseries/np.std(timeseries)
     if max_value is not None:
-        print('                 : '+'Normalized by max value: '+str(max_value))
+        print('                 : '+'normalized by max value: '+str(max_value))
         timeseries = timeseries/max_value
 
     return timeseries
@@ -1739,7 +1740,7 @@ def add_discrete_kernel_by_label(kernel_name,design, run_params,session,fit):
 
     except Exception as e:
         print('\tError encountered while adding kernel for '+kernel_name+'. \n'+\
-            'Attemping to continue without this kernel.' )
+            '\tAttemping to continue without this kernel.' )
         print(e)
         # Need to remove from relevant lists
         run_params['failed_kernels'].add(kernel_name)      

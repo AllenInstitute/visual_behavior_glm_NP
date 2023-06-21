@@ -349,27 +349,22 @@ def get_mouseseeks_qc_results(session_id=None, id_type='behavior_session_uuid'):
 
 
 def is_int(n):
-    raise Exception('outdated') 
     return isinstance(n, (int, np.integer))
 
 
 def is_float(n):
-    raise Exception('outdated') 
     return isinstance(n, (float, np.float))
 
 
 def is_uuid(n):
-    raise Exception('outdated') 
     return isinstance(n, uuid.UUID)
 
 
 def is_bool(n):
-    raise Exception('outdated') 
     return isinstance(n, (bool, np.bool_))
 
 
 def is_array(n):
-    raise Exception('outdated') 
     return isinstance(n, np.ndarray)
 
 
@@ -576,8 +571,8 @@ def simplify_type(x):
         return int(x)
     elif is_float(x):
         return float(x)
-    elif is_uuid(x):
-        return str(x)
+    #elif is_uuid(x):
+    #    return str(x)
     elif is_array(x):
         return [simplify_type(e) for e in x]
     else:
