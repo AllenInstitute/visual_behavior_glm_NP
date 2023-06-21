@@ -134,7 +134,7 @@ def fit_experiment(oeid, run_params, NO_DROPOUTS=False):
     elif run_params['version_type'] == 'standard':
         print('Standard fit, will only include standard dropouts')
     elif run_params['version_type'] == 'minimal':
-        print('Minimal fit, will not perform dropouts, or shuffle analysis')
+        print('Minimal fit, will not perform dropouts')
 
     # Warn user if debugging tools are active
     if NO_DROPOUTS:
@@ -1738,7 +1738,8 @@ def add_discrete_kernel_by_label(kernel_name,design, run_params,session,fit):
         check_by_engagement_state(run_params, fit, event_times,event)
 
     except Exception as e:
-        print('\tError encountered while adding kernel for '+kernel_name+'. Attemping to continue without this kernel.' )
+        print('\tError encountered while adding kernel for '+kernel_name+'. \n'+\
+            'Attemping to continue without this kernel.' )
         print(e)
         # Need to remove from relevant lists
         run_params['failed_kernels'].add(kernel_name)      
