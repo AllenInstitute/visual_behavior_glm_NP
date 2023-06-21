@@ -273,11 +273,11 @@ def evaluate_ridge(fit, design,run_params,session):
     elif not fit['ok_to_fit_preferred_engagement']:
         print('\tSkipping ridge evaluation because insufficient preferred engagement timepoints')
         fit['avg_L2_regularization'] = np.nan      
-        fit['cell_L2_regularization'] = np.empty((fit['fit_trace_arr'].shape[1],))
-        fit['L2_test_cv'] = np.empty((fit['fit_trace_arr'].shape[1],)) 
-        fit['L2_train_cv'] = np.empty((fit['fit_trace_arr'].shape[1],)) 
-        fit['L2_at_grid_min'] = np.empty((fit['fit_trace_arr'].shape[1],))
-        fit['L2_at_grid_max'] = np.empty((fit['fit_trace_arr'].shape[1],))
+        fit['cell_L2_regularization'] = np.empty((fit['spike_count_arr'].shape[1],))
+        fit['L2_test_cv'] = np.empty((fit['spike_count_arr'].shape[1],)) 
+        fit['L2_train_cv'] = np.empty((fit['spike_count_arr'].shape[1],)) 
+        fit['L2_at_grid_min'] = np.empty((fit['spike_count_arr'].shape[1],))
+        fit['L2_at_grid_max'] = np.empty((fit['spike_count_arr'].shape[1],))
         fit['cell_L2_regularization'][:] = np.nan
         fit['L2_test_cv'][:] = np.nan
         fit['L2_train_cv'][:] =np.nan
@@ -292,22 +292,22 @@ def evaluate_ridge(fit, design,run_params,session):
             fit['L2_grid'] = np.geomspace(run_params['L2_grid_range'][0], run_params['L2_grid_range'][1],num = run_params['L2_grid_num'])
         else:
             fit['L2_grid'] = np.linspace(run_params['L2_grid_range'][0], run_params['L2_grid_range'][1],num = run_params['L2_grid_num'])
-        train_cv = np.empty((fit['fit_trace_arr'].shape[1], len(fit['L2_grid']))) 
-        test_cv  = np.empty((fit['fit_trace_arr'].shape[1], len(fit['L2_grid']))) 
+        train_cv = np.empty((fit['spike_count_arr'].shape[1], len(fit['L2_grid']))) 
+        test_cv  = np.empty((fit['spike_count_arr'].shape[1], len(fit['L2_grid']))) 
         X = design.get_X()
       
         # Iterate over L2 Values 
         for L2_index, L2_value in enumerate(fit['L2_grid']):
-            cv_var_train = np.empty((fit['fit_trace_arr'].shape[1], len(fit['ridge_splits'])))
-            cv_var_test = np.empty((fit['fit_trace_arr'].shape[1], len(fit['ridge_splits'])))
+            cv_var_train = np.empty((fit['spike_count_arr'].shape[1], len(fit['ridge_splits'])))
+            cv_var_test = np.empty((fit['spike_count_arr'].shape[1], len(fit['ridge_splits'])))
 
             # Iterate over CV splits
             for split_index, test_split in tqdm(enumerate(fit['ridge_splits']), total=len(fit['ridge_splits']), desc='    Fitting L2, {}'.format(L2_value)):
                 train_split = np.sort(np.concatenate([split for i, split in enumerate(fit['ridge_splits']) if i!=split_index]))
                 X_test  = X[test_split,:]
                 X_train = X[train_split,:]
-                fit_trace_train = fit['fit_trace_arr'][train_split,:]
-                fit_trace_test  = fit['fit_trace_arr'][test_split,:]
+                fit_trace_train = fit['spike_count_arr'][train_split,:]
+                fit_trace_test  = fit['spike_count_arr'][test_split,:]
                 W = fit_regularized(fit_trace_train, X_train, L2_value)
                 cv_var_train[:,split_index] = variance_ratio(fit_trace_train, W, X_train)
                 cv_var_test[:,split_index]  = variance_ratio(fit_trace_test, W, X_test)
@@ -614,7 +614,7 @@ def evaluate_models_different_ridge(fit,design,run_params):
         fit['dropouts'][model_label]['train_weights']   = all_weights_xarray
         fit['dropouts'][model_label]['train_variance_explained']    = all_var_explain
         fit['dropouts'][model_label]['train_adjvariance_explained'] = all_adjvar_explain
-        fit['dropouts'][model_label]['full_model_train_prediction'] = all_prediction
+        #fit['dropouts'][model_label]['full_model_train_prediction'] = all_prediction
         fit['dropouts'][model_label]['cv_weights']      = cv_weights
         fit['dropouts'][model_label]['cv_var_train']    = cv_var_train
         fit['dropouts'][model_label]['cv_var_test']     = cv_var_test
@@ -644,22 +644,22 @@ def evaluate_models_same_ridge(fit, design, run_params):
         Full_X = design.get_X(kernels=fit['dropouts']['Full']['kernels'])
 
         # Fit on full dataset for references as training fit
-        fit_trace = fit['fit_trace_arr']
+        fit_trace = fit['spike_count_arr']
         Wall = fit_regularized(fit_trace, X,fit['avg_L2_regularization'])     
         var_explain = variance_ratio(fit_trace, Wall,X)
         adjvar_explain = masked_variance_ratio(fit_trace, Wall,X, mask) 
         fit['dropouts'][model_label]['train_weights'] = Wall
         fit['dropouts'][model_label]['train_variance_explained']    = var_explain
         fit['dropouts'][model_label]['train_adjvariance_explained'] = adjvar_explain
-        fit['dropouts'][model_label]['full_model_train_prediction'] = X.values @ Wall.values
+        #fit['dropouts'][model_label]['full_model_train_prediction'] = X.values @ Wall.values
 
         # Iterate CV
-        cv_var_train = np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))
-        cv_var_test = np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))
-        cv_adjvar_train = np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits']))) 
-        cv_adjvar_test = np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))  
-        cv_adjvar_train_fc = np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits']))) 
-        cv_adjvar_test_fc= np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))  
+        cv_var_train = np.empty((fit['spike_count_arr'].shape[1], len(fit['splits'])))
+        cv_var_test = np.empty((fit['spike_count_arr'].shape[1], len(fit['splits'])))
+        cv_adjvar_train = np.empty((fit['spike_count_arr'].shape[1], len(fit['splits']))) 
+        cv_adjvar_test = np.empty((fit['spike_count_arr'].shape[1], len(fit['splits'])))  
+        cv_adjvar_train_fc = np.empty((fit['spike_count_arr'].shape[1], len(fit['splits']))) 
+        cv_adjvar_test_fc= np.empty((fit['spike_count_arr'].shape[1], len(fit['splits'])))  
         cv_weights = np.empty((np.shape(Wall)[0], np.shape(Wall)[1], len(fit['splits'])))
 
         for index, test_split in tqdm(enumerate(fit['splits']), total=len(fit['splits']), desc='    Fitting model, {}'.format(model_label)):
@@ -668,8 +668,8 @@ def evaluate_models_same_ridge(fit, design, run_params):
             X_train = X[train_split,:]
             mask_test = mask[test_split]
             mask_train = mask[train_split]
-            fit_trace_train = fit['fit_trace_arr'][train_split,:]
-            fit_trace_test = fit['fit_trace_arr'][test_split,:]
+            fit_trace_train = fit['spike_count_arr'][train_split,:]
+            fit_trace_test = fit['spike_count_arr'][test_split,:]
             W = fit_regularized(fit_trace_train, X_train, fit['avg_L2_regularization'])
             cv_var_train[:,index]   = variance_ratio(fit_trace_train, W, X_train)
             cv_var_test[:,index]    = variance_ratio(fit_trace_test, W, X_test)
@@ -1086,8 +1086,7 @@ def process_ephys_data(fit, session, run_params):
  
     # bin spikes 
     spikes = np.zeros([np.shape(fit['timebins'])[0],len(unit_channels)])
-    print('HACK! just doing 5 units')
-    for index, unit in tqdm(enumerate(unit_channels.index.values[0:5]),
+    for index, unit in tqdm(enumerate(unit_channels.index.values),
         total = len(unit_channels),desc='binning spikes'):
         spikes[:,index] = get_spike_counts(spike_times[unit],fit['timebins']) 
 
@@ -2069,12 +2068,12 @@ def fit_regularized(fit_trace_arr, X, lam):
                np.dot(X.T, fit_trace_arr))
 
     # Make xarray
-    cellids = fit_trace_arr['cell_specimen_id'].values
+    cellids = fit_trace_arr['unit_id'].values
     W_xarray= xr.DataArray(
             W, 
-            dims =('weights','cell_specimen_id'), 
+            dims =('weights','unit_id'), 
             coords = {  'weights':X.weights.values, 
-                        'cell_specimen_id':cellids}
+                        'unit_id':cellids}
             )
     return W_xarray
 
