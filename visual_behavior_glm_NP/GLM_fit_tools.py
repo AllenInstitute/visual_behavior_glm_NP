@@ -130,7 +130,7 @@ def fit_experiment(oeid, run_params, NO_DROPOUTS=False):
     # Log oeid
     print("Fitting ecephys_session_id: "+str(oeid)) 
     if run_params['version_type'] == 'production':
-        print('Production fit, will include all dropouts, and shuffle analysis')
+        print('Production fit, will include all dropouts')
     elif run_params['version_type'] == 'standard':
         print('Standard fit, will only include standard dropouts')
     elif run_params['version_type'] == 'minimal':
@@ -138,7 +138,8 @@ def fit_experiment(oeid, run_params, NO_DROPOUTS=False):
 
     # Warn user if debugging tools are active
     if NO_DROPOUTS:
-        print('WARNING! NO_DROPOUTS=True in fit_experiment(), dropout analysis will NOT run, despite version_type')
+        print('WARNING! NO_DROPOUTS=True in fit_experiment(), dropout analysis '+\
+            'will NOT run, despite version_type')
 
     # Load Data
     print('Loading data')
@@ -184,69 +185,13 @@ def fit_experiment(oeid, run_params, NO_DROPOUTS=False):
     with bz2.BZ2File(filepath, 'w') as f:
         cPickle.dump(fit,f)
 
-    # Save Event Table
-    if run_params['version_type'] == 'production':
-        print('Saving Events Table')
-        filepath = os.path.join(run_params['experiment_output_dir'],'event_times_'+str(oeid)+'.h5')
-        pd.DataFrame(design.events).to_hdf(filepath,key='df')
-
     # Pack up
     print('Finished') 
     return session, fit, design
 
-def evaluate_shuffle(fit, design, method='cells', num_shuffles=50):
-    '''
-        Evaluates the model on shuffled df/f data to determine a noise floor for the model
-    
-        Inputs:
-        fit, the fit dictionary
-        design, the design matrix
-        method, either 'cells' or 'time'
-            cells, shuffle cell labels, but preserves time. 
-            time, circularly permutes each cell's df/f trace
-        num_shuffles, how many times to shuffle.
-    
-        returns:
-        fit, with the added keys:
-            var_shuffle_<method>    a cells x num_shuffles arrays of shuffled variance explained
-            var_shuffle_<method>_threshold  the threshold for a 5% false positive rate
-    '''
-    # Set up space
-    W = fit['dropouts']['Full']['train_weights']
-    X = design.get_X()
-    var_shuffle = np.empty((fit['fit_trace_arr'].shape[1], num_shuffles)) 
-    fit_trace_shuffle = np.copy(fit['fit_trace_arr'].values)
-    max_shuffle = np.shape(fit_trace_shuffle)[0]
-    
-    # Edge case with exactly 1 cell. don't perform shuffle
-    if fit['fit_trace_arr'].shape[1] <=1:
-        fit['var_shuffle_'+method] = var_shuffle
-        fit['var_shuffle_'+method+'_threshold'] = 0
-        return fit
-
-    # Iterate over shuffles
-    for count in tqdm(range(0, num_shuffles), total=num_shuffles, desc='    Shuffling by {}'.format(method)):
-        if method == 'time':
-            for dex in range(0, np.shape(fit_trace_shuffle)[1]):
-                shuffle_count = np.random.randint(1, max_shuffle)
-                fit_trace_shuffle[:,dex] = np.roll(fit_trace_shuffle[:,dex], shuffle_count, axis=0) 
-        elif method == 'cells':
-            idx = np.random.permutation(np.shape(fit_trace_shuffle)[1])
-            while np.any(idx == np.array(range(0, np.shape(fit_trace_shuffle)[1]))):
-                idx = np.random.permutation(np.shape(fit_trace_shuffle)[1])
-            fit_trace_shuffle = np.copy(fit['fit_trace_arr'].values)[:,idx]
-        var_shuffle[:,count]  = variance_ratio(fit_trace_shuffle, W, X)
-
-    # Make summary evaluation of shuffle threshold
-    fit['var_shuffle_'+method] = var_shuffle
-    x = np.sort(var_shuffle.flatten())
-    dex = np.floor(len(x)*0.95).astype(int)
-    fit['var_shuffle_'+method+'_threshold'] = x[dex]
-    return fit
-
 def evaluate_ridge(fit, design,run_params,session):
     '''
-        Finds the best L2 value by fitting the model on a grid of L2 values and reporting training/test error
+        Finds the best L2 value by fitting the model on a grid of L2 values
     
         fit, model dictionary
         design, design matrix
@@ -259,9 +204,9 @@ def evaluate_ridge(fit, design,run_params,session):
             L2_grid_num             # Number of L2 values for optimization
 
         returns fit, with the values added:
-            L2_grid                 # the L2 grid evaluated (if L2_optimize_by_cell, or L2_optimize_by_session)
+            L2_grid                 # the L2 grid evaluated 
             avg_L2_regularization      # the average optimal L2 value, or the fixed value
-            cell_L2_regularization     # the optimal L2 value for each cell (if L2_optimize_by_cell)
+            cell_L2_regularization     # the optimal L2 value for each cell 
     '''
     if run_params['L2_use_fixed_value']:
         print('Using a hard-coded regularization value')
@@ -289,9 +234,11 @@ def evaluate_ridge(fit, design,run_params,session):
     else:
         print('Evaluating a grid of regularization values')
         if run_params['L2_grid_type'] == 'log':
-            fit['L2_grid'] = np.geomspace(run_params['L2_grid_range'][0], run_params['L2_grid_range'][1],num = run_params['L2_grid_num'])
+            fit['L2_grid'] = np.geomspace(run_params['L2_grid_range'][0], \
+                run_params['L2_grid_range'][1],num = run_params['L2_grid_num'])
         else:
-            fit['L2_grid'] = np.linspace(run_params['L2_grid_range'][0], run_params['L2_grid_range'][1],num = run_params['L2_grid_num'])
+            fit['L2_grid'] = np.linspace(run_params['L2_grid_range'][0], \
+                run_params['L2_grid_range'][1],num = run_params['L2_grid_num'])
         train_cv = np.empty((fit['spike_count_arr'].shape[1], len(fit['L2_grid']))) 
         test_cv  = np.empty((fit['spike_count_arr'].shape[1], len(fit['L2_grid']))) 
         X = design.get_X()
@@ -302,8 +249,10 @@ def evaluate_ridge(fit, design,run_params,session):
             cv_var_test = np.empty((fit['spike_count_arr'].shape[1], len(fit['ridge_splits'])))
 
             # Iterate over CV splits
-            for split_index, test_split in tqdm(enumerate(fit['ridge_splits']), total=len(fit['ridge_splits']), desc='    Fitting L2, {}'.format(L2_value)):
-                train_split = np.sort(np.concatenate([split for i, split in enumerate(fit['ridge_splits']) if i!=split_index]))
+            for split_index, test_split in tqdm(enumerate(fit['ridge_splits']), \
+                total=len(fit['ridge_splits']), desc='    Fitting L2, {}'.format(L2_value)):
+                train_split = np.sort(np.concatenate(\
+                    [split for i, split in enumerate(fit['ridge_splits']) if i!=split_index]))
                 X_test  = X[test_split,:]
                 X_train = X[train_split,:]
                 fit_trace_train = fit['spike_count_arr'][train_split,:]
@@ -315,7 +264,7 @@ def evaluate_ridge(fit, design,run_params,session):
             train_cv[:,L2_index] = np.mean(cv_var_train,1)
             test_cv[:,L2_index]  = np.mean(cv_var_test,1)
 
-        fit['avg_L2_regularization'] = np.mean([fit['L2_grid'][x] for x in np.argmax(test_cv,1)])      
+        fit['avg_L2_regularization'] = np.mean([fit['L2_grid'][x] for x in np.argmax(test_cv,1)]) 
         fit['cell_L2_regularization'] = [fit['L2_grid'][x] for x in np.argmax(test_cv,1)]     
         fit['L2_test_cv'] = test_cv
         fit['L2_train_cv'] = train_cv
@@ -327,10 +276,12 @@ def evaluate_lasso(fit, design, run_params):
     '''
         Uses Cross validation on a grid of alpha parameters
     '''
+    raise Exception('outdated')
     # Determine splits 
     lasso_splits = []  
     for split_index, test_split in enumerate(fit['ridge_splits']):
-        train_split = np.sort(np.concatenate([split for i, split in enumerate(fit['ridge_splits']) if i!=split_index]))
+        train_split = np.sort(np.concatenate(\
+            [split for i, split in enumerate(fit['ridge_splits']) if i!=split_index]))
         lasso_splits.append((train_split, test_split)) 
 
     alphas = [1e-8,1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1,1,10,100]
@@ -338,7 +289,8 @@ def evaluate_lasso(fit, design, run_params):
     x = design.get_X()
     cell_train_cv = []
     cell_test_cv = []
-    for cell_index,cell_value in tqdm(enumerate(fit['fit_trace_arr']['cell_specimen_id'].values),total=len(fit['fit_trace_arr']['cell_specimen_id'].values),desc='   Fitting Cells'):
+    for cell_index,cell_value in tqdm(enumerate(fit['fit_trace_arr']['cell_specimen_id'].values),\
+        total=len(fit['fit_trace_arr']['cell_specimen_id'].values),desc='   Fitting Cells'):
         y = fit['fit_trace_arr'][:,cell_index] 
         alpha_train_cv = []
         alpha_test_cv = []
@@ -367,8 +319,9 @@ def evaluate_lasso(fit, design, run_params):
         cell_train_cv.append(alpha_train_cv)
         cell_test_cv.append(alpha_test_cv)
     fit['Lasso_grid'] = alphas
-    fit['avg_Lasso_regularization'] = np.mean([fit['Lasso_grid'][x] for x in np.argmax(cell_test_cv,1)])      
-    fit['cell_Lasso_regularization'] = [fit['Lasso_grid'][x] for x in np.argmax(cell_test_cv,1)]     
+    fit['avg_Lasso_regularization'] = \
+        np.mean([fit['Lasso_grid'][x] for x in np.argmax(cell_test_cv,1)])      
+    fit['cell_Lasso_regularization'] = [fit['Lasso_grid'][x] for x in np.argmax(cell_test_cv,1)] 
     fit['Lasso_test_cv'] = cell_test_cv
     fit['Lasso_train_cv'] = cell_train_cv
     fit['Lasso_at_grid_min'] = [x==0 for x in np.argmax(cell_test_cv,1)]
@@ -377,7 +330,7 @@ def evaluate_lasso(fit, design, run_params):
 
 def evaluate_models(fit, design, run_params):
     '''
-        Evaluates the model selections across all dropouts using either the single L2 value, or each cell's optimal value
+        Evaluates the model selections across all dropouts
 
     '''
     if not fit['ok_to_fit_preferred_engagement']:
@@ -391,17 +344,27 @@ def evaluate_models(fit, design, run_params):
             coords = {  'weights':[], 
                         'cell_specimen_id':cellids}
             )
-        fit['dropouts']['Full']['cv_weights']      = np.empty((0,fit['fit_trace_arr'].shape[1], len(fit['splits']))) 
-        fit['dropouts']['Full']['cv_var_train']    = np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))
-        fit['dropouts']['Full']['cv_var_test']     = np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))
-        fit['dropouts']['Full']['cv_adjvar_train'] = np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))
-        fit['dropouts']['Full']['cv_adjvar_test']  = np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))
-        fit['dropouts']['Full']['cv_adjvar_train_full_comparison'] = np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))
-        fit['dropouts']['Full']['cv_adjvar_test_full_comparison']  = np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))
+        fit['dropouts']['Full']['cv_weights']      = \
+            np.empty((0,fit['fit_trace_arr'].shape[1], len(fit['splits']))) 
+        fit['dropouts']['Full']['cv_var_train']    = \
+            np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))
+        fit['dropouts']['Full']['cv_var_test']     = \
+            np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))
+        fit['dropouts']['Full']['cv_adjvar_train'] = \
+            np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))
+        fit['dropouts']['Full']['cv_adjvar_test']  = \
+            np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))
+        fit['dropouts']['Full']['cv_adjvar_train_full_comparison'] = \
+            np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))
+        fit['dropouts']['Full']['cv_adjvar_test_full_comparison']  = \
+            np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))
         fit['dropouts']['Full']['train_weights'] = dummy_weights # Needs to be xarray
-        fit['dropouts']['Full']['train_variance_explained']    = np.empty((fit['fit_trace_arr'].shape[1],)) 
-        fit['dropouts']['Full']['train_adjvariance_explained'] = np.empty((fit['fit_trace_arr'].shape[1],)) 
-        fit['dropouts']['Full']['full_model_train_prediction'] = np.empty((0,fit['fit_trace_arr'].shape[1]))
+        fit['dropouts']['Full']['train_variance_explained']    = \
+            np.empty((fit['fit_trace_arr'].shape[1],)) 
+        fit['dropouts']['Full']['train_adjvariance_explained'] = \
+            np.empty((fit['fit_trace_arr'].shape[1],)) 
+        fit['dropouts']['Full']['full_model_train_prediction'] = \
+            np.empty((0,fit['fit_trace_arr'].shape[1]))
         fit['dropouts']['Full']['cv_weights'][:]      = np.nan
         fit['dropouts']['Full']['cv_var_train'][:]    = np.nan
         fit['dropouts']['Full']['cv_var_test'][:]     = np.nan
@@ -413,7 +376,9 @@ def evaluate_models(fit, design, run_params):
         fit['dropouts']['Full']['train_adjvariance_explained'][:] = np.nan 
         fit['dropouts']['Full']['full_model_train_prediction'][:] = np.nan  
         return fit
-    if run_params['L2_use_fixed_value'] or run_params['L2_optimize_by_session'] or run_params['L2_optimize_by_cre']:
+    if run_params['L2_use_fixed_value'] or \
+        run_params['L2_optimize_by_session'] or \
+        run_params['L2_optimize_by_cre']:
         print('Using a constant regularization value across all cells')
         return evaluate_models_same_ridge(fit,design, run_params)
     elif run_params['L2_optimize_by_cell']:
@@ -429,10 +394,12 @@ def evaluate_models_lasso(fit,design,run_params):
     '''
         Fits and evaluates each model defined in fit['dropouts']
            
-        For each model, it creates the design matrix, finds the optimal weights, and saves the variance explained. 
-            It does this for the entire dataset as test and train. As well as CV, saving each test/train split
+        For each model, it creates the design matrix, finds the optimal weights, 
+        and saves the variance explained. It does this for the entire dataset 
+        as test and train. As well as CV, saving each test/train split
 
     '''
+    raise Exception('outdated')
     for model_label in fit['dropouts'].keys():
 
         # Set up design matrix for this dropout
@@ -447,7 +414,8 @@ def evaluate_models_lasso(fit,design,run_params):
         cv_adjvar_test  = np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits']))) 
         cv_adjvar_train_fc = np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits']))) 
         cv_adjvar_test_fc= np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))  
-        cv_weights      = np.empty((np.shape(X)[1], fit['fit_trace_arr'].shape[1], len(fit['splits'])))
+        cv_weights      = np.empty((np.shape(X)[1], fit['fit_trace_arr'].shape[1], \
+            len(fit['splits'])))
         all_weights     = np.empty((np.shape(X)[1], fit['fit_trace_arr'].shape[1]))
         all_var_explain = np.empty((fit['fit_trace_arr'].shape[1]))
         all_adjvar_explain = np.empty((fit['fit_trace_arr'].shape[1]))
@@ -455,10 +423,13 @@ def evaluate_models_lasso(fit,design,run_params):
         X_test_array = []   # Cache the intermediate steps for each cell
         X_train_array = []
 
-        for cell_index,cell_value in tqdm(enumerate(fit['fit_trace_arr']['cell_specimen_id'].values),total=len(fit['fit_trace_arr']['cell_specimen_id'].values),desc='   Fitting Cells'):
+        for cell_index,cell_value in \
+            tqdm(enumerate(fit['fit_trace_arr']['cell_specimen_id'].values),\
+            total=len(fit['fit_trace_arr']['cell_specimen_id'].values),desc='   Fitting Cells'):
 
             fit_trace = fit['fit_trace_arr'][:,cell_index]
-            Wall = fit_cell_lasso_regularized(fit_trace, X,fit['cell_Lasso_regularization'][cell_index])     
+            Wall = fit_cell_lasso_regularized(fit_trace, X,\
+                fit['cell_Lasso_regularization'][cell_index])     
             var_explain = variance_ratio(fit_trace, Wall,X)
             adjvar_explain = masked_variance_ratio(fit_trace, Wall,X, mask) 
             all_weights[:,cell_index] = Wall
@@ -467,7 +438,8 @@ def evaluate_models_lasso(fit,design,run_params):
             all_prediction[:,cell_index] = X.values @ Wall.values
 
             for index, test_split in enumerate(fit['splits']):
-                train_split = np.sort(np.concatenate([split for i, split in enumerate(fit['splits']) if i!=index]))
+                train_split = np.sort(np.concatenate(\
+                    [split for i, split in enumerate(fit['splits']) if i!=index]))
         
                 # If this is the first cell, stash the design matrix and covariance result
                 if cell_index == 0:
@@ -481,24 +453,32 @@ def evaluate_models_lasso(fit,design,run_params):
                 fit_trace_test = fit['fit_trace_arr'][test_split,cell_index]
                 
                 # do the fitting 
-                W = fit_cell_lasso_regularized(fit_trace_train, X_train, fit['cell_Lasso_regularization'][cell_index])
+                W = fit_cell_lasso_regularized(fit_trace_train, X_train, \
+                    fit['cell_Lasso_regularization'][cell_index])
 
                 cv_var_train[cell_index,index] = variance_ratio(fit_trace_train, W, X_train)
                 cv_var_test[cell_index,index] = variance_ratio(fit_trace_test, W, X_test)
-                cv_adjvar_train[cell_index,index]= masked_variance_ratio(fit_trace_train, W, X_train, mask[train_split]) 
-                cv_adjvar_test[cell_index,index] = masked_variance_ratio(fit_trace_test, W, X_test, mask[test_split])
+                cv_adjvar_train[cell_index,index]= \
+                    masked_variance_ratio(fit_trace_train, W, X_train, mask[train_split]) 
+                cv_adjvar_test[cell_index,index] = \
+                    masked_variance_ratio(fit_trace_test, W, X_test, mask[test_split])
                 cv_weights[:,cell_index,index] = W 
                 if model_label == 'Full':
                     # If this is the Full model, the value is the same
-                    cv_adjvar_train_fc[cell_index,index]= masked_variance_ratio(fit_trace_train, W, X_train, mask[train_split])  
-                    cv_adjvar_test_fc[cell_index,index] = masked_variance_ratio(fit_trace_test, W, X_test, mask[test_split])  
+                    cv_adjvar_train_fc[cell_index,index]= \
+                        masked_variance_ratio(fit_trace_train, W, X_train, mask[train_split])  
+                    cv_adjvar_test_fc[cell_index,index] = \
+                        masked_variance_ratio(fit_trace_test, W, X_test, mask[test_split])  
                 else:
-                    # Otherwise, get weights and design matrix for this cell/cv_split and compute the variance explained on this mask
+                    # Otherwise, get weights and design matrix for this cell/cv_split 
+                    # and compute the variance explained on this mask
                     Full_W = xr.DataArray(fit['dropouts']['Full']['cv_weights'][:,cell_index,index])
                     Full_X_test = Full_X[test_split,:]
                     Full_X_train = Full_X[train_split,:]
-                    cv_adjvar_train_fc[cell_index,index]= masked_variance_ratio(fit_trace_train, Full_W, Full_X_train, mask[train_split])  
-                    cv_adjvar_test_fc[cell_index,index] = masked_variance_ratio(fit_trace_test, Full_W, Full_X_test, mask[test_split])    
+                    cv_adjvar_train_fc[cell_index,index]= masked_variance_ratio(\
+                        fit_trace_train, Full_W, Full_X_train, mask[train_split])  
+                    cv_adjvar_test_fc[cell_index,index] = masked_variance_ratio(\
+                        fit_trace_test, Full_W, Full_X_test, mask[test_split])    
 
         all_weights_xarray = xr.DataArray(
             data = all_weights,
@@ -529,8 +509,9 @@ def evaluate_models_different_ridge(fit,design,run_params):
     '''
         Fits and evaluates each model defined in fit['dropouts']
            
-        For each model, it creates the design matrix, finds the optimal weights, and saves the variance explained. 
-            It does this for the entire dataset as test and train. As well as CV, saving each test/train split
+        For each model, it creates the design matrix, finds the optimal weights, 
+        and saves the variance explained. It does this for the entire dataset as 
+        test and train. As well as CV, saving each test/train split
 
         Each cell uses a different L2 value defined in fit['cell_L2_regularization']
     '''
@@ -549,7 +530,8 @@ def evaluate_models_different_ridge(fit,design,run_params):
         cv_adjvar_test  = np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits']))) 
         cv_adjvar_train_fc = np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits']))) 
         cv_adjvar_test_fc= np.empty((fit['fit_trace_arr'].shape[1], len(fit['splits'])))  
-        cv_weights      = np.empty((np.shape(X)[1], fit['fit_trace_arr'].shape[1], len(fit['splits'])))
+        cv_weights      = np.empty((np.shape(X)[1], fit['fit_trace_arr'].shape[1], \
+            len(fit['splits'])))
         all_weights     = np.empty((np.shape(X)[1], fit['fit_trace_arr'].shape[1]))
         all_var_explain = np.empty((fit['fit_trace_arr'].shape[1]))
         all_adjvar_explain = np.empty((fit['fit_trace_arr'].shape[1]))
@@ -558,10 +540,13 @@ def evaluate_models_different_ridge(fit,design,run_params):
         X_train_array = []
         X_cov_array = []
 
-        for cell_index, cell_value in tqdm(enumerate(fit['fit_trace_arr']['cell_specimen_id'].values),total=len(fit['fit_trace_arr']['cell_specimen_id'].values),desc='   Fitting Cells'):
+        for cell_index, cell_value in \
+            tqdm(enumerate(fit['fit_trace_arr']['cell_specimen_id'].values),\
+            total=len(fit['fit_trace_arr']['cell_specimen_id'].values),desc='   Fitting Cells'):
 
             fit_trace = fit['fit_trace_arr'][:,cell_index]
-            Wall = fit_cell_regularized(X_inner,fit_trace, X,fit['cell_L2_regularization'][cell_index])     
+            Wall = fit_cell_regularized(X_inner,fit_trace, X,\
+                fit['cell_L2_regularization'][cell_index])     
             var_explain = variance_ratio(fit_trace, Wall,X)
             adjvar_explain = masked_variance_ratio(fit_trace, Wall,X, mask) 
             all_weights[:,cell_index] = Wall
@@ -570,7 +555,8 @@ def evaluate_models_different_ridge(fit,design,run_params):
             all_prediction[:,cell_index] = X.values @ Wall.values
 
             for index, test_split in enumerate(fit['splits']):
-                train_split = np.sort(np.concatenate([split for i, split in enumerate(fit['splits']) if i!=index]))
+                train_split = np.sort(np.concatenate(\
+                    [split for i, split in enumerate(fit['splits']) if i!=index]))
         
                 # If this is the first cell, stash the design matrix and covariance result
                 if cell_index == 0:
@@ -584,23 +570,32 @@ def evaluate_models_different_ridge(fit,design,run_params):
 
                 fit_trace_train = fit['fit_trace_arr'][train_split,cell_index]
                 fit_trace_test = fit['fit_trace_arr'][test_split,cell_index]
-                W = fit_cell_regularized(X_cov,fit_trace_train, X_train, fit['cell_L2_regularization'][cell_index])
+                W = fit_cell_regularized(X_cov,fit_trace_train, X_train, \
+                    fit['cell_L2_regularization'][cell_index])
                 cv_var_train[cell_index,index] = variance_ratio(fit_trace_train, W, X_train)
                 cv_var_test[cell_index,index] = variance_ratio(fit_trace_test, W, X_test)
-                cv_adjvar_train[cell_index,index]= masked_variance_ratio(fit_trace_train, W, X_train, mask[train_split]) 
-                cv_adjvar_test[cell_index,index] = masked_variance_ratio(fit_trace_test, W, X_test, mask[test_split])
+                cv_adjvar_train[cell_index,index]= masked_variance_ratio(\
+                    fit_trace_train, W, X_train, mask[train_split]) 
+                cv_adjvar_test[cell_index,index] = masked_variance_ratio(\
+                    fit_trace_test, W, X_test, mask[test_split])
                 cv_weights[:,cell_index,index] = W 
                 if model_label == 'Full':
                     # If this is the Full model, the value is the same
-                    cv_adjvar_train_fc[cell_index,index]= masked_variance_ratio(fit_trace_train, W, X_train, mask[train_split])  
-                    cv_adjvar_test_fc[cell_index,index] = masked_variance_ratio(fit_trace_test, W, X_test, mask[test_split])  
+                    cv_adjvar_train_fc[cell_index,index]= masked_variance_ratio(\
+                        fit_trace_train, W, X_train, mask[train_split])  
+                    cv_adjvar_test_fc[cell_index,index] = masked_variance_ratio(\
+                        fit_trace_test, W, X_test, mask[test_split])  
                 else:
-                    # Otherwise, get weights and design matrix for this cell/cv_split and compute the variance explained on this mask
-                    Full_W = xr.DataArray(fit['dropouts']['Full']['cv_weights'][:,cell_index,index])
+                    # Otherwise, get weights and design matrix for this cell/cv_split 
+                    # and compute the variance explained on this mask
+                    Full_W = xr.DataArray(\
+                        fit['dropouts']['Full']['cv_weights'][:,cell_index,index])
                     Full_X_test = Full_X[test_split,:]
                     Full_X_train = Full_X[train_split,:]
-                    cv_adjvar_train_fc[cell_index,index]= masked_variance_ratio(fit_trace_train, Full_W, Full_X_train, mask[train_split])  
-                    cv_adjvar_test_fc[cell_index,index] = masked_variance_ratio(fit_trace_test, Full_W, Full_X_test, mask[test_split])    
+                    cv_adjvar_train_fc[cell_index,index]= masked_variance_ratio(\
+                        fit_trace_train, Full_W, Full_X_train, mask[train_split])  
+                    cv_adjvar_test_fc[cell_index,index] = masked_variance_ratio(\
+                        fit_trace_test, Full_W, Full_X_test, mask[test_split])    
 
         all_weights_xarray = xr.DataArray(
             data = all_weights,
@@ -630,8 +625,9 @@ def evaluate_models_same_ridge(fit, design, run_params):
     '''
         Fits and evaluates each model defined in fit['dropouts']
     
-        For each model, it creates the design matrix, finds the optimal weights, and saves the variance explained. 
-            It does this for the entire dataset as test and train. As well as CV, saving each test/train split
+        For each model, it creates the design matrix, finds the optimal weights, 
+        and saves the variance explained. It does this for the entire dataset as 
+        test and train. As well as CV, saving each test/train split
     
         All cells use the same regularization value defined in fit['avg_L2_regularization']  
         
@@ -1414,16 +1410,11 @@ def plot_interpolation_debug(fit,session):
 
 def add_engagement_labels(fit, session, run_params):
     '''
-        Adds a boolean vector 'engaged' to the fit dictionary based on the reward rate
-        
-        The reward rate is determined on an image by image basis by comparing the reward rate to a fixed threshold. Therefore the 
-        engagement state only changes at the start/end of each image cycle
+        Adds a boolean vector 'engaged' to the fit dictionary based on the reward rate 
+        The reward rate is determined on an image by image basis by comparing the 
+        reward rate to a fixed threshold. Therefore the engagement state only changes 
+        at the start/end of each image cycle
     '''
-    
-
-    # Debugging session with model fit
-    # BSID 965505185
-    # OEID 965928394
 
     # Reward rate calculation parameters, hard-coded here
     reward_threshold=1/90
@@ -1432,16 +1423,21 @@ def add_engagement_labels(fit, session, run_params):
 
     # Get reward rate
     add_rewards_each_flash(session)
-    session.stimulus_presentations['rewarded'] = [len(x) > 0 for x in session.stimulus_presentations['rewards']]
-    session.stimulus_presentations['reward_rate'] = session.stimulus_presentations['rewarded'].rolling(win_dur,min_periods=1,win_type=win_type).mean()/.75
-    session.stimulus_presentations['engaged']= [x > reward_threshold for x in session.stimulus_presentations['reward_rate']]    
+    session.stimulus_presentations['rewarded'] = \
+        [len(x) > 0 for x in session.stimulus_presentations['rewards']]
+    session.stimulus_presentations['reward_rate'] = \
+        session.stimulus_presentations['rewarded'].\
+        rolling(win_dur,min_periods=1,win_type=win_type).mean()/.75
+    session.stimulus_presentations['engaged']= \
+        [x > reward_threshold for x in session.stimulus_presentations['reward_rate']]    
 
     # Make dataframe with start/end of each image cycle pinned with correct engagement value
     start_df = session.stimulus_presentations[['start_time','engaged']].copy()
     end_df = session.stimulus_presentations[['start_time','engaged']].copy()
     end_df['start_time'] = end_df['start_time']+0.75
     engaged_df = pd.concat([start_df,end_df])
-    engaged_df = engaged_df.sort_values(by='start_time').rename(columns={'start_time':'timestamps','engaged':'values'})  
+    engaged_df = engaged_df.sort_values(by='start_time')\
+        .rename(columns={'start_time':'timestamps','engaged':'values'})  
     
     # Interpolate onto fit timestamps
     fit['engaged']= interpolate_to_ophys_timestamps(fit,engaged_df)['values'].values 
@@ -1453,13 +1449,16 @@ def add_engagement_labels(fit, session, run_params):
     seconds_in_disengaged = np.sum(~fit['engaged'].astype(bool))/fit['ophys_frame_rate']
     if run_params['engagement_preference'] == 'engaged':
         fit['preferred_engagement_state_duration'] = seconds_in_engaged
-        fit['ok_to_fit_preferred_engagement'] = seconds_in_engaged > run_params['min_engaged_duration']
+        fit['ok_to_fit_preferred_engagement'] = \
+            seconds_in_engaged > run_params['min_engaged_duration']
     else:
         fit['preferred_engagement_state_duration'] = seconds_in_disengaged
-        fit['ok_to_fit_preferred_engagement'] = seconds_in_disengaged > run_params['min_engaged_duration']
+        fit['ok_to_fit_preferred_engagement'] = \
+            seconds_in_disengaged > run_params['min_engaged_duration']
     
     if not fit['ok_to_fit_preferred_engagement']:
-        print('WARNING, insufficient time points in preferred engagement state. This model will not fit') 
+        print('WARNING, insufficient time points in preferred engagement state.'+\
+            ' This model will not fit') 
     return fit
 
 def add_image_index(session):
@@ -1611,7 +1610,8 @@ def add_continuous_kernel_by_label(kernel_name, design, run_params, session,fit)
         else:
             raise Exception('Could not resolve kernel label')
     except Exception as e:
-        print('\tError encountered while adding kernel for '+kernel_name+'. Attemping to continue without this kernel. ' )
+        print('\tError encountered while adding kernel for '+kernel_name+'. \n'+\
+            'Attemping to continue without this kernel.' )
         print(e)
         # Need to remove from relevant lists
         run_params['failed_kernels'].add(kernel_name)      
@@ -1625,7 +1625,8 @@ def add_continuous_kernel_by_label(kernel_name, design, run_params, session,fit)
         return design
     else:
         #assert length of values is same as length of timestamps
-        assert len(timeseries) == fit['spike_count_arr'].values.shape[0], 'Length of continuous regressor must match length of fit_trace_timestamps'
+        assert len(timeseries) == fit['spike_count_arr'].values.shape[0], \
+            'Length of continuous regressor must match length of fit_trace_timestamps'
 
         # Add to design matrix
         design.add_kernel(

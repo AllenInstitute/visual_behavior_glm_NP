@@ -28,12 +28,11 @@ if False:
     cache = glm_params.get_cache()
     experiment_table = glm_params.get_experiment_table()
     unit_table = glm_params.get_unit_table()
-    master_unit_table = glm_params.get_master_unit_table()
+    sdk_unit_table = glm_params.get_sdk_unit_table()
     
     # Get model information
     version ='100_testing' 
     run_params = glm_params.load_run_json(version)
-    run_params['spike_bin_width'] = 0.050
     inventory_table = gat.build_inventory_table()
 
     # Fit results
