@@ -1349,9 +1349,7 @@ def inventory_glm_version(glm_version):
         'fit_sessions': fit_sessions,
         'fit_units':fit_units,
         'missing_sessions': missing_sessions,
-        'missing_units': missing_units,
-        'total sessions':total_sessions,
-        'total units':total_units
+        'missing_units': missing_units
         }
     
     return inventory
