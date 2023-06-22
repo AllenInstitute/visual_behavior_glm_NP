@@ -1180,158 +1180,6 @@ def add_rewards_each_flash_inner(stimulus_presentations_df, rewards_df,
 
     return rewards_each_flash
 
-# TODO REMOVE
-def interpolate_to_stimulus(fit, session, run_params):
-    '''
-        This function interpolates the neural signal (either dff or events) onto timestamps that are aligned to the stimulus.
-        
-        The new timestamps are aligned to the onset of each image presentation (or omission), and the last timebin in each 750ms image
-        cycle is allowed to be variable to account for variability in image presentation start times, and the ophys timestamps not perfect
-        dividing the image cycle. 
-    '''
-    if ('interpolate_to_stimulus' not in run_params) or (not run_params['interpolate_to_stimulus']):
-        print('Not interpolating onto stimulus aligned timestamps')
-        return fit, run_params
-    print('Interpolating neural signal onto stimulus aligned timestamps')
-   
-
-    # Find first non omitted stimulus
-    filtered_stimulus_presentations = session.stimulus_presentations
-    while filtered_stimulus_presentations.iloc[0]['omitted'] == True:
-        filtered_stimulus_presentations = filtered_stimulus_presentations.iloc[1:]
-
-    # Make new timestamps by starting with each stimulus start time, and adding time points until we hit the next stimulus
-    start_times = filtered_stimulus_presentations.start_time.values
-    start_times = np.concatenate([start_times,[start_times[-1]+.75]]) 
-    mean_step = np.mean(np.diff(fit['fit_trace_timestamps']))
-    sets_of_stimulus_timestamps = []
-    for index, start in enumerate(start_times[0:-1]):
-        sets_of_stimulus_timestamps.append(np.arange(start_times[index], start_times[index+1]- mean_step*.5,mean_step)) 
-
-    # Check to make sure we always have the same number of timestamps per stimulus
-    lens = [len(x) for x in sets_of_stimulus_timestamps]
-    mode = scipy.stats.mode(lens)[0][0]
-    if len(np.unique(lens)) > 1:
-        u,c = np.unique(lens, return_counts=True)
-        for index, val in enumerate(u):
-            print('   Stimuli with {} timestamps: {}'.format(u[index], c[index]))
-        print('   This happens when the following stimulus is delayed creating a greater than 750ms duration')
-        print('   I will truncate extra timestamps so that all stimuli have the same number of following timestamps')
-    
-        # Determine how many timestamps each stimuli most commonly has and trim off the extra
-        sets_of_stimulus_timestamps = [x[0:mode] for x in sets_of_stimulus_timestamps]
-
-        # Check again to make sure we always have the same number of timestamps
-        # Note this can still fail if the stimulus duration is less than 750
-        lens = [len(x) for x in sets_of_stimulus_timestamps]
-        if len(np.unique(lens)) > 1:
-            print('   Warning!!! uneven number of steps per stimulus interval')
-            print('   This happens when the stimulus duration is much less than 750ms')
-            print('   I will need to check for this happening when kernels are added to the design matrix')
-            u,c = np.unique(lens, return_counts=True)
-            overlaps = 0
-            for index, val in enumerate(u):
-                print('Stimuli with {} timestamps: {}'.format(u[index], c[index]))
-                if u[index] < mode:
-                    overlaps += (mode-u[index])*c[index]
-            if ('image_kernel_overlap_tol' in run_params) & (run_params['image_kernel_overlap_tol'] > 0):
-                print('checking to see if image kernel overlap is within tolerance ({})'.format(run_params['image_kernel_overlap_tol']))
-                print('overlapping timestamps: {}'.format(overlaps))
-                if overlaps > run_params['image_kernel_overlap_tol']:
-                    raise Exception('Uneven number of steps per stimulus interval')
-                else:
-                    print('I think I am under the tolerance, continuing')
-
-    # Combine all the timestamps together
-    new_timestamps = np.concatenate(sets_of_stimulus_timestamps)
-    new_bins = np.concatenate([new_timestamps,[new_timestamps[-1]+mean_step]])-mean_step*.5
-
-    # Setup new variables 
-    num_cells = np.size(fit['fit_trace_arr'],1)
-    new_trace_arr = np.empty((len(new_timestamps),num_cells))
-    new_trace_arr[:] = 0
-    new_dff_trace_arr = np.empty((len(new_timestamps),num_cells))
-    new_dff_trace_arr[:] = 0
-    if ('use_events' in run_params) and (run_params['use_events']):
-        new_events_trace_arr = np.empty((len(new_timestamps),num_cells))
-        new_events_trace_arr[:] = 0
-    else:
-        new_events_trace_arr = None
-
-    # Interpolate onto new timestamps
-    for index in range(0,num_cells):
-        # Fit array
-        f = scipy.interpolate.interp1d(fit['fit_trace_timestamps'],fit['fit_trace_arr'][:,index],bounds_error=False,fill_value='extrapolate')
-        new_trace_arr[:,index] = f(new_timestamps)
-
-        # dff array
-        f = scipy.interpolate.interp1d(fit['fit_trace_timestamps'],fit['dff_trace_arr'][:,index],bounds_error=False,fill_value='extrapolate')
-        new_dff_trace_arr[:,index] = f(new_timestamps)
-        
-        # events array, if we are using it
-        if ('use_events' in run_params) and (run_params['use_events']):
-            f = scipy.interpolate.interp1d(fit['fit_trace_timestamps'],fit['events_trace_arr'][:,index],bounds_error=False,fill_value='extrapolate')
-            new_events_trace_arr[:,index] = f(new_timestamps)
-
-    # Convert into xarrays
-    new_trace_arr = xr.DataArray(
-        new_trace_arr, 
-        dims = ('fit_trace_timestamps','cell_specimen_id'), 
-        coords = {
-            'fit_trace_timestamps':new_timestamps,
-            'cell_specimen_id':fit['fit_trace_arr']['cell_specimen_id'].values
-        }
-    )
-    new_dff_trace_arr = xr.DataArray(
-        new_dff_trace_arr, 
-        dims = ('fit_trace_timestamps','cell_specimen_id'), 
-        coords = {
-            'fit_trace_timestamps':new_timestamps,
-            'cell_specimen_id':fit['fit_trace_arr']['cell_specimen_id'].values
-        }
-    )
-    if ('use_events' in run_params) and (run_params['use_events']):
-        new_events_trace_arr = xr.DataArray(
-            new_events_trace_arr, 
-            dims = ('fit_trace_timestamps','cell_specimen_id'), 
-            coords = {
-                'fit_trace_timestamps':new_timestamps,
-                'cell_specimen_id':fit['fit_trace_arr']['cell_specimen_id'].values
-            }
-        )       
-
-    # Save everything
-    fit['stimulus_interpolation'] ={
-        'mean_step':mean_step,
-        'timesteps_per_stimulus':mode,
-        'original_fit_arr':fit['fit_trace_arr'],
-        'original_dff_arr':fit['dff_trace_arr'],
-        'original_events_arr':fit['events_trace_arr'],
-        'original_timestamps':fit['fit_trace_timestamps'],
-        'original_bins':fit['fit_trace_bins']
-    }
-    fit['fit_trace_arr']    = new_trace_arr
-    fit['dff_trace_arr']    = new_dff_trace_arr
-    fit['events_trace_arr'] = new_events_trace_arr
-    fit['fit_trace_timestamps'] = new_timestamps
-    fit['fit_trace_bins']   = new_bins
-   
-    # Use the number of timesteps per stimulus to define the image kernel length so we get no overlap 
-    kernels_to_limit_per_image_cycle = ['image0','image1','image2','image3','image4','image5','image6','image7']
-    if 'post-omissions' in run_params['kernels']:
-        kernels_to_limit_per_image_cycle.append('omissions')
-    if 'post-hits' in run_params['kernels']:
-        kernels_to_limit_per_image_cycle.append('hits')
-        kernels_to_limit_per_image_cycle.append('misses')
-        kernels_to_limit_per_image_cycle.append('passive_change')
-    for k in kernels_to_limit_per_image_cycle:
-        if k in run_params['kernels']:
-            run_params['kernels'][k]['num_weights'] = fit['stimulus_interpolation']['timesteps_per_stimulus']    
-
-    # Check to make sure there are no NaNs in the fit_trace
-    assert np.isnan(fit['fit_trace_arr']).sum() == 0, "Have NaNs in fit_trace_arr"
-
-    return fit,run_params
 
 def check_image_kernel_alignment(design,run_params):
     '''
@@ -1355,59 +1203,6 @@ def check_image_kernel_alignment(design,run_params):
         print('No image kernel overlap: {}'.format(overlap))
     print('Passed all interpolation checks')
 
-
-
-def check_interpolation_to_stimulus(fit, session): 
-    '''
-        Checks to see if we have the same number of timestamps per stimulus presentation
-    '''
-    lens = []
-    temp = session.stimulus_presentations.copy()
-    temp['next_start'] = temp.shift(-1)['start_time']
-    temp.at[temp.index.values[-1],'next_start'] = temp.iloc[-1]['start_time']+0.75
-    for index, row in temp.iterrows():
-        stamps = np.sum((fit['fit_trace_timestamps'] >= row.start_time) & (fit['fit_trace_timestamps'] < row.next_start))
-        lens.append(stamps)
-    return temp, lens
-    if len(np.unique(lens)) > 1:
-        u,c = np.unique(lens, return_counts=True)
-        for index, val in enumerate(u):
-            print('   Stimuli with {} timestamps: {}'.format(u[index], c[index]))
-        raise Exception('Uneven number of timestamps per stimulus presentation')
-
-def plot_interpolation_debug(fit,session): 
-    fig, ax = plt.subplots(2,1)
-    
-    # Stim start
-    ax[0].plot(fit['stimulus_interpolation']['original_timestamps'][0:50],fit['stimulus_interpolation']['original_fit_arr'][0:50,0], 'ko',markerfacecolor='None',label='Original')
-    ax[0].plot(fit['fit_trace_timestamps'][0:50],fit['fit_trace_arr'][0:50,0], 'bo',markerfacecolor='None',label='Stimulus Aligned')
-    for dex in range(0,len(session.stimulus_presentations)):
-        if session.stimulus_presentations.loc[dex].start_time > fit['stimulus_interpolation']['original_timestamps'][50]:
-            break
-        ax[0].axvline(session.stimulus_presentations.loc[dex].start_time,color='r',markerfacecolor='None')
-    for dex, val in enumerate(fit['stimulus_interpolation']['original_fit_arr'][0:50,0]):
-        ax[0].plot([fit['stimulus_interpolation']['original_bins'][dex],fit['stimulus_interpolation']['original_bins'][dex+1]],[val,val],'k-',alpha=.5)
-    for dex, val in enumerate(fit['fit_trace_arr'][0:50,0]):
-        ax[0].plot([fit['fit_trace_bins'][dex],fit['fit_trace_bins'][dex+1]],[val,val],'b-',alpha=.5)
-    ax[0].set_title('Stimulus Start')
-    ax[0].set_xlim(ax[0].get_xlim()[0]-.25,ax[0].get_xlim()[1])
-    #ax[0].set_ylim( -.5,.5)
-    ax[0].legend()
-
-    # Stim end
-    ax[1].plot(fit['stimulus_interpolation']['original_timestamps'][-50:],fit['stimulus_interpolation']['original_fit_arr'][-50:,0], 'ko',markerfacecolor='None')
-    ax[1].plot(fit['fit_trace_timestamps'][-50:],fit['fit_trace_arr'][-50:,0], 'bo',markerfacecolor='None')
-    for dex in range(0,len(session.stimulus_presentations)):
-        if session.stimulus_presentations.loc[dex].start_time > fit['stimulus_interpolation']['original_timestamps'][-50]:
-            ax[1].axvline(session.stimulus_presentations.loc[dex].start_time,color='r',markerfacecolor='None')
-    for dex, val in enumerate(fit['stimulus_interpolation']['original_fit_arr'][-50:,0]):
-        ax[1].plot([fit['stimulus_interpolation']['original_bins'][-51+dex],fit['stimulus_interpolation']['original_bins'][-50+dex]],[val,val],'k-',alpha=.5)
-    for dex, val in enumerate(fit['fit_trace_arr'][-50:,0]):
-        ax[1].plot([fit['fit_trace_bins'][-51+dex],fit['fit_trace_bins'][-50+dex]],[val,val],'b-',alpha=.5)
-    ax[1].set_title('Stimulus End')
-    ax[1].set_xlim(ax[1].get_xlim()[0],ax[1].get_xlim()[1]+.25)
-    #ax[1].set_ylim( -.5,.5)
-    plt.tight_layout()
 
 def add_engagement_labels(fit, session, run_params):
     '''
@@ -1550,7 +1345,7 @@ def clean_failed_kernels(run_params):
 def add_continuous_kernel_by_label(kernel_name, design, run_params, session,fit):
     '''
         Adds the kernel specified by <kernel_name> to the design matrix
-        kernel_name          <str> the label for this kernel, will raise an error if not implemented
+        kernel_name     <str> the label for this kernel, will raise an error if not implemented
         design          the design matrix for this model
         run_params      the run_json for this model
         session         the SDK session object for this experiment
@@ -1580,16 +1375,22 @@ def add_continuous_kernel_by_label(kernel_name, design, run_params, session,fit)
                 'values': session.behavior_movie_pc_activations[:,PC_number]
             })
             timeseries = interpolate_to_ophys_timestamps(fit, face_motion_df)['values'].values
-            timeseries = standardize_inputs(timeseries, mean_center=run_params['mean_center_inputs'],unit_variance=run_params['unit_variance_inputs'])
+            timeseries = standardize_inputs(timeseries, 
+                mean_center=run_params['mean_center_inputs'],
+                unit_variance=run_params['unit_variance_inputs'])
         elif event == 'population_mean':
             timeseries = np.mean(fit['fit_trace_arr'],1).values
-            timeseries = standardize_inputs(timeseries, mean_center=run_params['mean_center_inputs'],unit_variance=run_params['unit_variance_inputs'])
+            timeseries = standardize_inputs(timeseries, 
+                mean_center=run_params['mean_center_inputs'],
+                unit_variance=run_params['unit_variance_inputs'])
         elif event == 'Population_Activity_PC1':
             pca = PCA()
             pca.fit(fit['fit_trace_arr'].values)
             fit_trace_pca = pca.transform(fit['fit_trace_arr'].values)
             timeseries = fit_trace_pca[:,0]
-            timeseries = standardize_inputs(timeseries, mean_center=run_params['mean_center_inputs'],unit_variance=run_params['unit_variance_inputs'])
+            timeseries = standardize_inputs(timeseries, 
+                mean_center=run_params['mean_center_inputs'],
+                unit_variance=run_params['unit_variance_inputs'])
         elif (len(event) > 6) & ( event[0:6] == 'model_'):
             bsid = session.metadata['behavior_session_id']
             weight_name = event[6:]
@@ -1598,15 +1399,19 @@ def add_continuous_kernel_by_label(kernel_name, design, run_params, session,fit)
             weight_df['timestamps'] = session.stimulus_presentations.start_time.values
             weight_df['values'] = weight.values
             timeseries = interpolate_to_ophys_timestamps(fit, weight_df)
-            timeseries['values'].fillna(method='ffill',inplace=True) # TODO investigate where these NaNs come from
+            timeseries['values'].fillna(method='ffill',inplace=True) 
             timeseries = timeseries['values'].values
-            timeseries = standardize_inputs(timeseries, mean_center=run_params['mean_center_inputs'],unit_variance=run_params['unit_variance_inputs'])
+            timeseries = standardize_inputs(timeseries, 
+                mean_center=run_params['mean_center_inputs'],
+                unit_variance=run_params['unit_variance_inputs'])
         elif event == 'pupil':
-            session.ophys_eye = process_eye_data(session,run_params,ophys_timestamps =fit['bin_centers'] )
+            session.ophys_eye = process_eye_data(session,run_params,
+                ophys_timestamps =fit['bin_centers'] )
             timeseries = session.ophys_eye['pupil_radius_zscore'].values
         elif event == 'lick_model' or event == 'groom_model':
             if not hasattr(session, 'lick_groom_model'):
-                session.lick_groom_model = process_behavior_predictions(session, ophys_timestamps = fit['bin_centers'])
+                session.lick_groom_model = process_behavior_predictions(session, 
+                    ophys_timestamps = fit['bin_centers'])
             timeseries = session.lick_groom_model[event.split('_')[0]].values
         else:
             raise Exception('Could not resolve kernel label')
@@ -1685,55 +1490,68 @@ def add_discrete_kernel_by_label(kernel_name,design, run_params,session,fit):
         elif event == 'lick_bouts':
             licks = session.licks
             licks['pre_ILI'] = licks['timestamps'] - licks['timestamps'].shift(fill_value=-10)
-            licks['post_ILI'] = licks['timestamps'].shift(periods=-1,fill_value=5000) - licks['timestamps']
+            licks['post_ILI'] = licks['timestamps']\
+                .shift(periods=-1,fill_value=5000) - licks['timestamps']
             licks['bout_start'] = licks['pre_ILI'] > run_params['lick_bout_ILI']
             licks['bout_end'] = licks['post_ILI'] > run_params['lick_bout_ILI']
-            assert np.sum(licks['bout_start']) == np.sum(licks['bout_end']), "Lick bout splitting failed"
+            assert np.sum(licks['bout_start']) == np.sum(licks['bout_end']), \
+                "Lick bout splitting failed"
             
-            # We are making an array of in-lick-bout-event-times by tiling timepoints every <min_interval> seconds. 
-            # If a lick is the end of a bout, the bout-event-times continue <min_time_per_bout> after the lick
+            # We are making an array of in-lick-bout-event-times by tiling 
+            # timepoints every <min_interval> seconds. 
+            # If a lick is the end of a bout, the bout-event-times continue 
+            # <min_time_per_bout> after the lick
             # Otherwise, we tile the duration of the post_ILI
-            event_times = np.concatenate([np.arange(x[0],x[0]+run_params['min_time_per_bout'],run_params['min_interval']) if x[2] else
-                                        np.arange(x[0],x[0]+x[1],run_params['min_interval']) for x in 
-                                        zip(licks['timestamps'], licks['post_ILI'], licks['bout_end'])]) 
+            event_times = np.concatenate([np.arange(x[0],x[0]\
+                +run_params['min_time_per_bout'],run_params['min_interval']) if x[2] else
+                np.arange(x[0],x[0]+x[1],run_params['min_interval']) for x in 
+                zip(licks['timestamps'], licks['post_ILI'], licks['bout_end'])]) 
         elif event == 'rewards':
             event_times = session.rewards['timestamps'].values
         elif event == 'change':
-            #event_times = session.trials.query('go')['change_time'].values # This method drops auto-rewarded changes
-            event_times = session.filtered_stimulus.query('is_change')['start_time'].values
-            event_times = event_times[~np.isnan(event_times)]
+            event_times = session.filtered_stimulus\
+                .query('is_change',engine='python')['start_time'].values
         elif event in ['hit', 'miss']:
             if event == 'hit': # Includes auto-rewarded changes as hits 
-                #event_times = session.trials.query('hit or auto_rewarded')['change_time'].values
-                event_times = session.filtered_stimulus.query('is_change & rewarded',engine='python')['start_time'].values 
+                event_times = session.filtered_stimulus\
+                    .query('is_change & rewarded',engine='python')['start_time'].values 
             elif event == 'miss':
-                event_times = session.filtered_stimulus.query('is_change & ~rewarded',engine='python')['start_time'].values
+                event_times = session.filtered_stimulus\
+                    .query('is_change & ~rewarded',engine='python')['start_time'].values
             event_times = event_times[~np.isnan(event_times)]
             if len(session.rewards) < 5: ## HARD CODING THIS VALUE
-                raise Exception('Trial type regressors arent defined for passive sessions (sessions with less than 5 rewards)')
+                raise Exception('Trial type regressors arent defined for passive sessions'+\
+                    ' (sessions with less than 5 rewards)')
         elif event == 'passive_change':
             if len(session.rewards) > 5: 
-                raise Exception('\tPassive Change kernel cant be added to active sessions')               
-            event_times = session.filtered_stimulus.query('is_change')['start_time'].values
+                raise Exception('\tPassive Change kernel cant be added to active sessions')      
+            event_times = session.filtered_stimulus\
+                .query('is_change',engine='python')['start_time'].values
             event_times = event_times[~np.isnan(event_times)]           
         elif event == 'any-image':
-            event_times = session.filtered_stimulus.query('not omitted')['start_time'].values
+            event_times = session.filtered_stimulus\
+                .query('not omitted',engine='python')['start_time'].values
         elif event == 'image_expectation':
             event_times = session.filtered_stimulus['start_time'].values
             # Append last image
             event_times = np.concatenate([event_times,[event_times[-1]+.75]])
         elif event == 'omissions':
-            event_times = session.filtered_stimulus.query('omitted',engine='python')['start_time'].values
+            event_times = session.filtered_stimulus\
+                .query('omitted',engine='python')['start_time'].values
         elif (len(event)>5) & (event[0:5] == 'image') & ('change' not in event):
-            event_times = session.filtered_stimulus.query('image_index == {}'.format(int(event[-1])))['start_time'].values
+            event_times = session.filtered_stimulus\
+                .query('image_index == {}'.format(int(event[-1])))['start_time'].values
         elif (len(event)>5) & (event[0:5] == 'image') & ('change' in event):
-            event_times = session.filtered_stimulus.query('is_change & (image_index == {})'.format(int(event[-1])))['start_time'].values
+            event_times = session.filtered_stimulus\
+                .query('is_change & (image_index == {})'\
+                .format(int(event[-1])))['start_time'].values
         else:
             raise Exception('\tCould not resolve kernel label')
 
         # Ensure minimum number of events
         if len(event_times) < 5: # HARD CODING THIS VALUE HERE
-            raise Exception('\tLess than minimum number of events: '+str(len(event_times)) +' '+event)
+            raise Exception('\tLess than minimum number of events: '+\
+                str(len(event_times)) +' '+event)
     
         # Ensure minimum number of events in preferred engagement state
         check_by_engagement_state(run_params, fit, event_times,event)
