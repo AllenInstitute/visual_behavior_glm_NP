@@ -1,5 +1,6 @@
 import os
 import bz2
+import time
 import _pickle as cPickle
 import xarray as xr
 import numpy as np
@@ -659,8 +660,11 @@ def evaluate_models_same_ridge(fit, design, run_params):
         cv_adjvar_test_fc= np.empty((fit['spike_count_arr'].shape[1], len(fit['splits'])))  
         cv_weights = np.empty((np.shape(Wall)[0], np.shape(Wall)[1], len(fit['splits'])))
 
-        for index, test_split in tqdm(enumerate(fit['splits']), total=len(fit['splits']), desc='    Fitting model, {}'.format(model_label)):
-            train_split = np.sort(np.concatenate([split for i, split in enumerate(fit['splits']) if i!=index])) 
+
+        for index, test_split in tqdm(enumerate(fit['splits']), total=len(fit['splits']), \
+            desc='    Fitting model, {}'.format(model_label)):
+            train_split = np.sort(np.concatenate(\
+                [split for i, split in enumerate(fit['splits']) if i!=index])) 
             X_test = X[test_split,:]
             X_train = X[train_split,:]
             mask_test = mask[test_split]
@@ -670,21 +674,27 @@ def evaluate_models_same_ridge(fit, design, run_params):
             W = fit_regularized(fit_trace_train, X_train, fit['avg_L2_regularization'])
             cv_var_train[:,index]   = variance_ratio(fit_trace_train, W, X_train)
             cv_var_test[:,index]    = variance_ratio(fit_trace_test, W, X_test)
-            cv_adjvar_train[:,index]= masked_variance_ratio(fit_trace_train, W, X_train, mask_train) 
-            cv_adjvar_test[:,index] = masked_variance_ratio(fit_trace_test, W, X_test, mask_test)
+            cv_adjvar_train[:,index]= masked_variance_ratio(\
+                fit_trace_train, W, X_train, mask_train) 
+            cv_adjvar_test[:,index] = masked_variance_ratio(\
+                fit_trace_test, W, X_test, mask_test)
             cv_weights[:,:,index]   = W 
             if model_label == 'Full':
                 # If this model is Full, then the masked variance ratio is the same
-                cv_adjvar_train_fc[:,index]= masked_variance_ratio(fit_trace_train, W, X_train, mask_train)  
-                cv_adjvar_test_fc[:,index] = masked_variance_ratio(fit_trace_test, W, X_test, mask_test)  
+                cv_adjvar_train_fc[:,index]= masked_variance_ratio(\
+                    fit_trace_train, W, X_train, mask_train)  
+                cv_adjvar_test_fc[:,index] = masked_variance_ratio(\
+                    fit_trace_test, W, X_test, mask_test)  
             else:
-                # Otherwise load the weights and design matrix for this cv_split, and compute VE with this support mask
+                # Otherwise load the weights and design matrix for this cv_split, 
+                # and compute VE with this support mask
                 Full_W = xr.DataArray(fit['dropouts']['Full']['cv_weights'][:,:,index])
                 Full_X_test = Full_X[test_split,:]
                 Full_X_train = Full_X[train_split,:]
-                cv_adjvar_train_fc[:,index]= masked_variance_ratio(fit_trace_train, Full_W, Full_X_train, mask_train)  
-                cv_adjvar_test_fc[:,index] = masked_variance_ratio(fit_trace_test, Full_W, Full_X_test, mask_test)    
-
+                cv_adjvar_train_fc[:,index]= masked_variance_ratio(\
+                    fit_trace_train, Full_W, Full_X_train, mask_train)  
+                cv_adjvar_test_fc[:,index] = masked_variance_ratio(\
+                    fit_trace_test, Full_W, Full_X_test, mask_test)    
         fit['dropouts'][model_label]['cv_weights']      = cv_weights
         fit['dropouts'][model_label]['cv_var_train']    = cv_var_train
         fit['dropouts'][model_label]['cv_var_test']     = cv_var_test
@@ -1962,7 +1972,8 @@ def variance_ratio(fit_trace_arr, W, X):
     W: Xarray (n_kernel_params, n_cells)
     X: Xarray (n_timepoints, n_kernel_params)
     '''
-    Y = X.values @ W.values
+    #Y = X.values @ W.values
+    Y = np.dot(X.values,W.values)
     var_total = np.var(fit_trace_arr, axis=0)   # Total variance in the ophys trace for each cell
     var_resid = np.var(fit_trace_arr-Y, axis=0) # Residual variance in the difference between the model and data
     return (var_total - var_resid) / var_total  # Fraction of variance explained by linear model
@@ -1978,7 +1989,7 @@ def masked_variance_ratio(fit_trace_arr, W, X, mask):
     mask: bool vector (n_timepoints,)
     '''
 
-    Y = X.values @ W.values
+    Y = np.dot(X.values,W.values)
 
     # Define variance function that lets us isolate the mask timepoints
     def my_var(trace, support_mask):
