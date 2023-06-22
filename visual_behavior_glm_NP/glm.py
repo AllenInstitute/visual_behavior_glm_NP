@@ -104,7 +104,7 @@ class GLM(object):
         Fits the model
         '''
         self.session, self.fit, self.design = self.gft.fit_experiment(
-            self.oeid, self.run_params, self.NO_DROPOUTS, self.TESTING)
+            self.oeid, self.run_params, self.NO_DROPOUTS)
 
     def load_fit_model(self):
         '''
