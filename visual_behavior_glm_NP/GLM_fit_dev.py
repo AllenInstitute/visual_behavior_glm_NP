@@ -39,8 +39,11 @@ if False:
     oeid = experiment_table.index.values[0]
     session, fit, design = gft.fit_experiment(oeid, run_params)
 
-
-
+    # Get dataframes
+    results = gat.get_summary_results(version)
+    results_pivoted = gat.get_pivoted_results(results)
+    weights_df = gat.get_weights_df(version, results_pivoted)
+    
 
 
 

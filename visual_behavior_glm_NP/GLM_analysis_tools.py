@@ -17,6 +17,47 @@ import visual_behavior_glm_NP.GLM_params as glm_params
 
 NEURO_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
 
+def get_summary_results(version):
+    # results summary # results are experiment/cell/dropout
+    results = retrieve_results(
+        search_dict={'glm_version':version}, 
+        results_type='summary'
+        )
+    return results
+
+def get_pivoted_results(results=None,version=None): 
+    
+    if results is None:
+        results = get_summary_results(version)
+
+    # results_pivoted # rows are experiment/cell
+    results_pivoted = build_pivoted_results_summary(
+        'adj_fraction_change_from_full',
+        results_summary=results
+        )
+    return results_pivoted
+
+def get_full_results(version):
+
+    # Full Results
+    full_results = retrieve_results(
+        search_dict={'glm_version':version}, 
+        results_type='full'
+        )
+    return full_results
+
+def get_weights_df(version, results_pivoted=None):
+    
+    if results_pivoted is None:
+        results_pivoted = get_pivoted_results(version=version)
+
+    run_params = glm_params.load_run_json(version)
+ 
+    # weights_df
+    weights_df = build_weights_df(run_params, results_pivoted)
+
+    return weights_df
+
 def load_fit_pkl(run_params, ecephys_session_id):
     '''
         Loads the fit dictionary from the pkl file dumped by fit_experiment.
@@ -632,33 +673,43 @@ def build_pivoted_results_summary(value_to_use, results_summary=None, glm_versio
     inputs:
         results_summary: dataframe of results_summary. If none, will be pulled from mongo
         glm_version: glm_version to pull from database (only if results_summary is None)
-        cutoff: cutoff for CV score on full model. Cells with CV score less than this value will be excluded from the output dataframe
-        value_to_use: which column to use as the value in the pivot table (e.g. 'fraction_change_from_full')
+        cutoff: cutoff for CV score on full model. Cells with CV score less than this value 
+            will be excluded from the output dataframe
+        value_to_use: which column to use as the value in the pivot table 
+            (e.g. 'fraction_change_from_full')
     output:
         wide form results summary
     '''
     
     # some aassertions to make sure the right combination of stuff is input
-    assert results_summary is not None or glm_version is not None, 'must pass either a results_summary or a glm_version'
-    assert not (results_summary is not None and glm_version is not None), 'cannot pass both a results summary and a glm_version'
+    assert results_summary is not None or glm_version is not None, \
+        'must pass either a results_summary or a glm_version'
+    assert not (results_summary is not None and glm_version is not None), \
+        'cannot pass both a results summary and a glm_version'
     if results_summary is not None:
-        assert len(results_summary['glm_version'].unique()) == 1, 'number of glm_versions in the results summary cannot exceed 1'
+        assert len(results_summary['glm_version'].unique()) == 1, \
+            'number of glm_versions in the results summary cannot exceed 1'
         
     # get results summary if none was passed
     if results_summary is None:
-        results_summary = retrieve_results(search_dict = {'glm_version': glm_version}, results_type='summary',add_extra_columns=add_extra_columns)
+        results_summary = retrieve_results(search_dict = {'glm_version': glm_version}, \
+            results_type='summary',add_extra_columns=add_extra_columns)
 
-    results_summary['identifier'] = results_summary['ecephys_session_id'].astype(str) + '_' +  results_summary['cell_specimen_id'].astype(str)
+    results_summary['identifier'] = results_summary['ecephys_session_id'].astype(str) \
+        + '_' +  results_summary['unit_id'].astype(str)
  
     # apply cutoff. Set to -inf if not specified
     if cutoff is None:
         cutoff = -np.inf
-    cells_to_keep = list(results_summary.query('dropout == "Full" and variance_explained >= @cutoff')['identifier'].unique())
+    cells_to_keep = list(results_summary\
+        .query('dropout == "Full" and variance_explained >= @cutoff')['identifier'].unique())
  
     # pivot the results summary so that dropout scores become columns
-    results_summary_pivoted = results_summary.query('identifier in @cells_to_keep').pivot(index='identifier',columns='dropout',values=value_to_use).reset_index()
+    results_summary_pivoted = results_summary.query('identifier in @cells_to_keep')\
+        .pivot(index='identifier',columns='dropout',values=value_to_use).reset_index()
 
-    # merge in other identifying columns, leaving out those that will have more than one unique value per cell
+    # merge in other identifying columns, leaving out those that will have more than 
+    # one unique value per cell
     potential_cols_to_drop = [
         '_id', 
         'index',
