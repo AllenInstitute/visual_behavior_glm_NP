@@ -31,7 +31,7 @@ if False:
     sdk_unit_table = glm_params.get_sdk_unit_table()
     
     # Get model information
-    version ='100_testing' 
+    version ='100_testing_active' 
     run_params = glm_params.load_run_json(version)
     inventory_table = gat.build_inventory_table()
 

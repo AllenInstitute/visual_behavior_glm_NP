@@ -818,8 +818,8 @@ def process_session_to_df(oeid, run_params):
     
     # Make Dataframe with cell and experiment info
     session_df  = pd.DataFrame()
-    session_df['cell_specimen_id'] = W.cell_specimen_id.values
-    session_df['ecephys_session_id'] = [int(oeid)]*len(W.cell_specimen_id.values)  
+    session_df['unit_id'] = W.unit_id.values
+    session_df['ecephys_session_id'] = [int(oeid)]*len(W.unit_id.values)  
     
     # For each kernel, extract the weights for this kernel
     for k in run_params['kernels']:
@@ -857,12 +857,15 @@ def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=
     # Then pull the weights from each kernel into a dataframe
     sessions = []
     for index, oeid in enumerate(tqdm(oeids, desc='Iterating Sessions')):
-        session_df = process_session_to_df(oeid, run_params)
-        sessions.append(session_df)
+        try:
+            session_df = process_session_to_df(oeid, run_params)
+            sessions.append(session_df)
+        except:
+            print('Couldnt load weight matrix {}'.format(oeid)) 
 
     # Merge all the session_dfs, and add more session level info
     weights_df = pd.concat(sessions,sort=False)
-    weights_df = pd.merge(weights_df,results_pivoted, on = ['cell_specimen_id','ecephys_session_id'],suffixes=('_weights','')) 
+    weights_df = pd.merge(weights_df,results_pivoted, on = ['unit_id','ecephys_session_id'],suffixes=('_weights','')) 
    
     # If we didn't compute dropout scores, then there won't be redundant columns, so the weights won't get appended with _weights
     if not np.any(['weights' in x for x in weights_df.columns.values]):
