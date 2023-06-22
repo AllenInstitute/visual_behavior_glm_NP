@@ -17,6 +17,7 @@ import visual_behavior_glm_NP.GLM_params as glm_params
 
 NEURO_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
 
+
 def get_summary_results(version):
     # results summary # results are experiment/cell/dropout
     results = retrieve_results(
@@ -24,6 +25,7 @@ def get_summary_results(version):
         results_type='summary'
         )
     return results
+
 
 def get_pivoted_results(results=None,version=None): 
     
@@ -37,6 +39,7 @@ def get_pivoted_results(results=None,version=None):
         )
     return results_pivoted
 
+
 def get_full_results(version):
 
     # Full Results
@@ -45,6 +48,7 @@ def get_full_results(version):
         results_type='full'
         )
     return full_results
+
 
 def get_weights_df(version, results_pivoted=None):
     
@@ -57,6 +61,7 @@ def get_weights_df(version, results_pivoted=None):
     weights_df = build_weights_df(run_params, results_pivoted)
 
     return weights_df
+
 
 def load_fit_pkl(run_params, ecephys_session_id):
     '''
@@ -86,6 +91,7 @@ def load_fit_pkl(run_params, ecephys_session_id):
     else:
         return None
 
+
 def log_error(error_dict, keys_to_check = []):
     '''
     logs contents of error_dict to the `error_logs` collection in the `np_glm` mongo database
@@ -98,6 +104,7 @@ def log_error(error_dict, keys_to_check = []):
     )
     conn.close()
 
+
 def get_error_log(search_dict = {}):
     '''
     searches the mongo error log for all entries matching the search_dict
@@ -107,6 +114,7 @@ def get_error_log(search_dict = {}):
     result = conn['np_glm']['error_logs'].find(search_dict)
     conn.close()
     return pd.DataFrame(list(result))
+
 
 def build_kernel_df(glm, cell_specimen_id):
     '''
@@ -149,6 +157,7 @@ def build_kernel_df(glm, cell_specimen_id):
     # return the concatenated dataframe (concatenating a list of dataframes makes a single dataframe)
     return pd.concat(kernel_df)
 
+
 def generate_results_summary(glm):
     nonadj_dropout_summary = generate_results_summary_nonadj(glm)
     adj_dropout_summary = generate_results_summary_adj(glm)
@@ -160,6 +169,7 @@ def generate_results_summary(glm):
     ).reset_index()
     dropout_summary.columns.name = None
     return dropout_summary
+
 
 def generate_results_summary_adj(glm):
     '''
@@ -200,6 +210,7 @@ def generate_results_summary_adj(glm):
     # Concatenate all cells and return
 
     return pd.concat(results_summary_list)
+
 
 def generate_results_summary_nonadj(glm):
     '''
@@ -243,6 +254,7 @@ def generate_results_summary_nonadj(glm):
     # Concatenate all cells and return
 
     return pd.concat(results_summary_list)
+
 
 def generate_results_summary_non_cleaned(glm):
     '''
@@ -354,6 +366,7 @@ def log_results_to_mongo(glm):
             )
     conn.close()
 
+
 def xarray_to_mongo(xarray):
     '''
     writes xarray to the 'np_glm_xarrays' database in mongo
@@ -364,6 +377,7 @@ def xarray_to_mongo(xarray):
     xdb = xarray_mongodb.XarrayMongoDB(w_matrix_database)
     _id, _ = xdb.put(xarray)
     return _id
+
 
 def get_weights_matrix_from_mongo(ecephys_session_id, glm_version):
     '''
@@ -445,6 +459,7 @@ def log_weights_matrix_to_mongo(glm):
 
     conn.close()
 
+
 def get_experiment_table(glm_version, include_4x2_data=False): 
     raise Exception('outdated')
     '''
@@ -510,6 +525,7 @@ def get_stdout_summary(glm_version):
 
     return stdout_summary
 
+
 def walltime_to_seconds(walltime_str):
     '''
     converts the walltime string from stdout summary to seconds (int)
@@ -517,6 +533,7 @@ def walltime_to_seconds(walltime_str):
     '''
     h, m, s = walltime_str.split(':')
     return int(h)*60*60 + int(m)*60 + int(s)
+
 
 def get_roi_count(ecephys_session_id):
     raise Exception('outdated')
@@ -526,6 +543,7 @@ def get_roi_count(ecephys_session_id):
     query= 'select * from cell_rois where ecephys_session_id = {}'.format(ecephys_session_id)
     df = db.lims_query(query)
     return df['valid_roi'].sum()
+
 
 def retrieve_results(search_dict={}, results_type='full', return_list=None, 
     merge_in_experiment_metadata=True,verbose=False):
@@ -599,8 +617,10 @@ def retrieve_results(search_dict={}, results_type='full', return_list=None,
  
     return results
 
+
 def make_identifier(row):
     return '{}_{}'.format(row['ecephys_session_id'],row['cell_specimen_id'])
+
 
 def get_glm_version_summary(versions_to_compare=None,vrange=[15,20], compact=True,invalid_only=False,remove_invalid_rois=True,save_results=True,additional_columns=[]):
     '''
@@ -637,6 +657,7 @@ def get_glm_version_summary(versions_to_compare=None,vrange=[15,20], compact=Tru
 
     return results
 
+
 def get_glm_version_comparison_table(versions_to_compare, results=None, metric='Full__avg_cv_var_test'):
     '''
     builds a table that allows to glm versions to be directly compared
@@ -666,6 +687,7 @@ def get_glm_version_comparison_table(versions_to_compare, results=None, metric='
     )
 
     return pivoted_results,pd.concat(results_list, sort=True)
+
 
 def build_pivoted_results_summary(value_to_use, results_summary=None, glm_version=None, cutoff=None,add_extra_columns=False):
     '''
@@ -763,6 +785,7 @@ def summarize_variance_explained(results=None):
         results = results_dict['full']
     return results.groupby(['glm_version','cre_line'])['Full_avg_cv_var_test'].describe()
 
+
 def run_pca(dropout_matrix, n_components=40, deal_with_nans='fill_with_zero'):
     raise Exception('outdated')
     '''
@@ -806,6 +829,7 @@ def process_session_to_df(oeid, run_params):
         if len(weight_names) > 0:
             session_df[k] = W.loc[dict(weights=weight_names)].values.T.tolist()
     return session_df
+
 
 def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=False,normalize=False):
     '''
@@ -917,11 +941,13 @@ def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=
     # Return weights_df
     return weights_df 
 
+
 def kernel_excitation(kernel):
     if np.isnan(np.sum(kernel)):
         return np.nan
     else:
         return np.sum(kernel[0:24]) > 0
+
 
 def compute_all_omissions(omissions):
     if np.isnan(np.sum(omissions[0])) or np.isnan(np.sum(omissions[1])):
@@ -929,11 +955,13 @@ def compute_all_omissions(omissions):
     
     return np.concatenate(omissions)
 
+
 def compute_all_kernels(kernels):
     if np.isnan(np.sum(kernels[0])) or np.isnan(np.sum(kernels[1])):
         return np.nan
     
     return np.concatenate(kernels)
+
 
 def compute_preferred_kernel(images):
     
@@ -944,6 +972,7 @@ def compute_preferred_kernel(images):
     # Find the kernel with the largest magnitude 
     weight_amplitudes = np.sum(np.abs(images),axis=1)
     return images[np.argmax(weight_amplitudes)] 
+
 
 def interpolate_kernels(weights_df, run_params, kernel_name,normalize=False):
     '''
@@ -976,6 +1005,7 @@ def interpolate_kernels(weights_df, run_params, kernel_name,normalize=False):
     weights_df[kernel_name] = [weight_interpolation(x, time_vecs) for x in df]
     return weights_df
 
+
 def weight_interpolation(weight_vec, time_vecs={}):
     if np.size(weight_vec) ==1:
         return weight_vec
@@ -985,6 +1015,7 @@ def weight_interpolation(weight_vec, time_vecs={}):
         return scipy.interpolate.interp1d(time_vecs['mesoscope'], weight_vec, fill_value='extrapolate',bounds_error=False)(time_vecs['scientifica'])
     else:
         return np.nan 
+
 
 def compute_weight_index(weights_df):
     '''
@@ -1000,6 +1031,7 @@ def compute_weight_index(weights_df):
     
     weights_df['all-images_weights_index'] = weights_df['image0_weights_index'] + weights_df['image1_weights_index'] + weights_df['image2_weights_index'] + weights_df['image3_weights_index'] + weights_df['image4_weights_index'] +weights_df['image5_weights_index'] +weights_df['image6_weights_index'] +weights_df['image7_weights_index']
     return weights_df
+
 
 def append_kernel_excitation(weights_df, results_pivoted):
     '''
@@ -1232,6 +1264,7 @@ def clean_glm_dropout_scores(results_pivoted, run_params, in_session_numbers=Non
 
     return results_pivoted_var
           
+
 def build_inventory_table(vrange=[100,120],return_inventories=False):
     '''
         Builds a table of all available GLM versions in the supplied range, and reports how many missing/fit experiments/rois in that version
@@ -1247,6 +1280,7 @@ def build_inventory_table(vrange=[100,120],return_inventories=False):
     else:
         return inventories_to_table(inventories)
 
+
 def inventories_to_table(inventories):
     '''
         Helper function that takes a dictionary of version inventories and build a summary table
@@ -1259,6 +1293,7 @@ def inventories_to_table(inventories):
             (summary[version]['missing_units'] == 0)
     table = pd.DataFrame.from_dict(summary,orient='index')
     return table
+
 
 def inventory_glm_version(glm_version):
     '''
@@ -1444,6 +1479,7 @@ def get_kernel_weights(glm, kernel_name, cell_specimen_id):
 
     return t_kernel, w_kernel
 
+
 def get_sem_thresholds(results_pivoted, alpha=0.05,metric='SEM'):
     raise Exception('outdated')   
     # Determine thresholds based on either:
@@ -1456,6 +1492,7 @@ def get_sem_thresholds(results_pivoted, alpha=0.05,metric='SEM'):
     for cre in cres:
         thresholds[cre] = results_pivoted.query('cre_line ==@cre')['variance_explained_full_sem'].quantile(1-alpha)
     return thresholds
+
 
 def compare_sem_thresholds(results_pivoted):
     raise Exception('outdated') 
@@ -1483,6 +1520,7 @@ def compare_sem_thresholds(results_pivoted):
         frac = (cre_slice['variance_explained_full_sem']> 0.005).astype(int).mean()
         print('{}: {}'.format(cre[0:3], np.round(frac,3)))
 
+
 def save_targeted_restart_table(run_params, results,save_table=True):
     raise Exception('outdated') 
     '''
@@ -1501,6 +1539,7 @@ def save_targeted_restart_table(run_params, results,save_table=True):
         restart_table.to_csv(table_path,index=False)
     return nan_oeids 
 
+
 def make_table_of_nan_cells(run_params, results,save_table=True):
     raise Exception('outdated') 
     '''
@@ -1512,6 +1551,7 @@ def make_table_of_nan_cells(run_params, results,save_table=True):
         table_path = run_params['output_dir']+'/nan_cells_table.csv'
         nan_cells.to_csv(table_path,index=False)
     return nan_cells
+
 
 def check_nan_cells(fit):
     raise Exception('outdated') 
@@ -1664,6 +1704,7 @@ def reshape_rspm_by_experience(results_pivoted = None, model_output_type='adj_fr
 
     return df
 
+
 def get_default_features(single=False):
     raise Exception('outdated') 
     '''
@@ -1685,6 +1726,7 @@ def get_default_features(single=False):
         features = ['single-' + feature for feature in features]
 
     return features
+
 
 def check_mesoscope(results,filters=['cre_line','targeted_structure','depth','meso']):
     raise Exception('outdated') 
