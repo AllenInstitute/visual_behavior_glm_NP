@@ -24,6 +24,10 @@ def get_summary_results(version):
         search_dict={'glm_version':version}, 
         results_type='summary'
         )
+   
+    unit_table = glm_params.get_unit_table()
+    results = results.merge(unit_table, on='unit_id',suffixes=('','_DROP'))
+    results = results.drop(results.filter(regex='_DROP').columns,axis=1)
     return results
 
 
