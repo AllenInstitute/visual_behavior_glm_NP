@@ -391,6 +391,7 @@ def evaluate_models(fit, design, run_params):
         return evaluate_models_lasso(fit,design, run_params)
     else:
         raise Exception('Unknown regularization approach')
+    print('Done evaluating models')
 
 def evaluate_models_lasso(fit,design,run_params):
     '''
