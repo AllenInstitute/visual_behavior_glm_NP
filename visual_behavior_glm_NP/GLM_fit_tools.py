@@ -1501,7 +1501,7 @@ def add_discrete_kernel_by_label(kernel_name,design, run_params,session,fit):
             raise Exception('\tInsufficient time points to add kernel') 
         event = run_params['kernels'][kernel_name]['event']
         start_time = fit['timebin_vector'][0]
-        end_time = fit['timebin_vector'][1]
+        end_time = fit['timebin_vector'][-1]
         if event == 'licks':
             event_times = session.licks\
                 .query('(timestamps >= @start_time)&(timestamps<@end_time)')['timestamps'].values
