@@ -1500,8 +1500,12 @@ def add_discrete_kernel_by_label(kernel_name,design, run_params,session,fit):
         if not fit['ok_to_fit_preferred_engagement']:
             raise Exception('\tInsufficient time points to add kernel') 
         event = run_params['kernels'][kernel_name]['event']
+        start_time = fit['timebin_vector'][0]
+        end_time = fit['timebin_vector'][1]
         if event == 'licks':
-            event_times = session.licks['timestamps'].values
+            event_times = session.licks\
+                .query('(timestamps >= @start_time)&(timestamps<@end_time)')['timestamps'].values
+            assert run_params['active'], "\tCannot add licks to passive session"
         elif event == 'lick_bouts':
             licks = session.licks
             licks['pre_ILI'] = licks['timestamps'] - licks['timestamps'].shift(fill_value=-10)
@@ -1522,7 +1526,9 @@ def add_discrete_kernel_by_label(kernel_name,design, run_params,session,fit):
                 np.arange(x[0],x[0]+x[1],run_params['min_interval']) for x in 
                 zip(licks['timestamps'], licks['post_ILI'], licks['bout_end'])]) 
         elif event == 'rewards':
-            event_times = session.rewards['timestamps'].values
+            event_times = session.rewards\
+                .query('(timestamps >= @start_time)&(timestamps<@end_time)')['timestamps'].values
+            assert run_params['active'], "\tCannot add licks to passive session"
         elif event == 'change':
             event_times = session.filtered_stimulus\
                 .query('is_change',engine='python')['start_time'].values
@@ -1534,11 +1540,11 @@ def add_discrete_kernel_by_label(kernel_name,design, run_params,session,fit):
                 event_times = session.filtered_stimulus\
                     .query('is_change & ~rewarded',engine='python')['start_time'].values
             event_times = event_times[~np.isnan(event_times)]
-            if len(session.rewards) < 5: ## HARD CODING THIS VALUE
-                raise Exception('Trial type regressors arent defined for passive sessions'+\
+            if (len(session.rewards) < 5) or (not run_params['active']):
+                raise Exception('\tTrial type regressors arent defined for passive sessions'+\
                     ' (sessions with less than 5 rewards)')
         elif event == 'passive_change':
-            if len(session.rewards) > 5: 
+            if (run_params['active']) or (len(session.rewards) > 5): 
                 raise Exception('\tPassive Change kernel cant be added to active sessions')      
             event_times = session.filtered_stimulus\
                 .query('is_change',engine='python')['start_time'].values
