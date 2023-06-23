@@ -1,19 +1,21 @@
+import os
+import sys
 import warnings
+import numpy as np
+import pandas as pd
+import importlib.util
+import matplotlib.pyplot as plt
+
+if sys.version_info.minor <= 7:
+    cached_property = property
+else:
+    from functools import cached_property
+
 import visual_behavior_glm_NP.database as db
 import visual_behavior_glm_NP.GLM_analysis_tools as gat
 import visual_behavior_glm_NP.GLM_fit_tools as gft
 import visual_behavior_glm_NP.GLM_visualization_tools as gvt
 import visual_behavior_glm_NP.GLM_params as glm_params
-import matplotlib.pyplot as plt
-import sys
-if sys.version_info.minor <= 7:
-    cached_property = property
-else:
-    from functools import cached_property
-import importlib.util
-import os
-import pandas as pd
-import numpy as np
 
 class GLM(object):
     '''
@@ -24,9 +26,12 @@ class GLM(object):
        
         log_results (bool): if True, logs results to mongoDB
         log_weights (bool): if True, logs weights to mongoDB 
-        use_previous_fit (bool): if True, attempts to load existing results instead of fitting the model
-        recompute (bool): if True, if the attempt to load the existing results fails, will fit the model instead of crashing
-        use_inputs (bool): if True, gets session, fit, and design objects from inputs=[session, fit, design]
+        use_previous_fit (bool): if True, attempts to load existing results 
+            instead of fitting the model
+        recompute (bool): if True, if the attempt to load the existing results 
+            fails, will fit the model instead of crashing
+        use_inputs (bool): if True, gets session, fit, and design objects from 
+            inputs=[session, fit, design]
         inputs (List): if use_inputs, this must be a list of session, fit, and design objects
     '''
 
@@ -47,7 +52,8 @@ class GLM(object):
         self._import_glm_fit_tools()
 
         if use_inputs & (inputs is not None):
-            # If user supplied session, fit, and design objects we dont need to load from file or fit model
+            # If user supplied session, fit, and design objects we dont need to 
+            # load from file or fit model
             self.session = inputs[0]
             self.fit = inputs[1]
             self.design = inputs[2]
@@ -120,8 +126,10 @@ class GLM(object):
             self.dropout_summary is uses the non-adjusted variance explained/dropout
             self.adj_dropout_summary uses the adjusted dropout and variance explained 
         '''
+
         self.results = self.gft.build_dataframe_from_dropouts(self.fit,self.run_params)
         self.dropout_summary = gat.generate_results_summary(self)
+
 
     def get_cells_above_threshold(self, threshold=None): 
         '''

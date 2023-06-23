@@ -393,7 +393,7 @@ def get_weights_matrix_from_mongo(ecephys_session_id, glm_version):
     w_matrix_database = conn['np_glm_xarrays']
 
     if w_matrix_lookup_table.count_documents(lookup_table_document) == 0:
-        warnings.warn('there is no record of a the weights matrix for oeid {}, glm_version {}'.format(ecephys_session_id, glm_version))
+        #warnings.warn('there is no record of a the weights matrix for oeid {}, glm_version {}'.format(ecephys_session_id, glm_version))
         conn.close()
         return None
     else:
@@ -410,7 +410,8 @@ def log_weights_matrix_to_mongo(glm):
     '''
     a method for logging the weights matrix to mongo
     uses the xarray_mongodb library, which automatically distributes the xarray into chunks
-    this necessitates building/maintaining a lookup table to link experiments/glm_verisons to the associated xarrays
+    this necessitates building/maintaining a lookup table to link experiments/glm_verisons 
+    to the associated xarrays
 
     input:
         GLM object
@@ -427,7 +428,8 @@ def log_weights_matrix_to_mongo(glm):
     w_matrix_database = conn['np_glm_xarrays']
 
     if w_matrix_lookup_table.count_documents(lookup_table_document) >= 1:
-        # if weights matrix for this experiment/version has already been logged, we need to replace it
+        # if weights matrix for this experiment/version has already been logged, 
+        # we need to replace it
         lookup_result = list(w_matrix_lookup_table.find(lookup_table_document))[0]
 
         # get the id of the xarray
@@ -444,7 +446,8 @@ def log_weights_matrix_to_mongo(glm):
         # update the lookup table entry
         lookup_result['w_matrix_id'] = new_w_matrix_id
         _id = lookup_result.pop('_id')
-        w_matrix_lookup_table.update_one({'_id':_id}, {"$set": db.clean_and_timestamp(lookup_result)})
+        w_matrix_lookup_table.update_one({'_id':_id}, \
+            {"$set": db.clean_and_timestamp(lookup_result)})
     else:
         # if the weights matrix had not already been logged
 
@@ -833,14 +836,16 @@ def process_session_to_df(oeid, run_params):
 
 def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=False,normalize=False):
     '''
-        Builds a dataframe of (cell_specimen_id, ecephys_session_id) with the weight parameters for each kernel
-        Some columns may have NaN if that cell did not have a kernel, for example if a missing datastream  
+        Builds a dataframe of (cell_specimen_id, ecephys_session_id) with the weight parameters 
+        for each kernel. Some columns may have NaN if that cell did not have a kernel, 
+        for example if a missing datastream  
         
         Takes about 5 minutes to run 
  
         INPUTS:
         run_params, parameter json for the version to analyze
-        results_pivoted = build_pivoted_results_summary('adj_fraction_change_from_full',results_summary=results)
+        results_pivoted = build_pivoted_results_summary(
+            'adj_fraction_change_from_full',results_summary=results)
         cache_results, if True, save dataframe as csv file
         load_cache, if True, load cached results, if it exists
     
@@ -856,18 +861,24 @@ def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=
     # For each experiment, get the weight matrix from mongo (slow)
     # Then pull the weights from each kernel into a dataframe
     sessions = []
+    failed_to_load = []
     for index, oeid in enumerate(tqdm(oeids, desc='Iterating Sessions')):
         try:
             session_df = process_session_to_df(oeid, run_params)
             sessions.append(session_df)
         except:
-            print('Couldnt load weight matrix {}'.format(oeid)) 
+            failed_to_load.append(oeid)
+
+    print('Couldn\'t find weight matrix for {} sessions'.format(len(failed_to_load)))
 
     # Merge all the session_dfs, and add more session level info
     weights_df = pd.concat(sessions,sort=False)
-    weights_df = pd.merge(weights_df,results_pivoted, on = ['unit_id','ecephys_session_id'],suffixes=('_weights','')) 
-   
-    # If we didn't compute dropout scores, then there won't be redundant columns, so the weights won't get appended with _weights
+    weights_df = pd.merge(weights_df,results_pivoted, \
+        on = ['unit_id','ecephys_session_id'],suffixes=('_weights','')) 
+  
+    return weights_df 
+    # If we didn't compute dropout scores, then there won't be redundant columns, 
+    # so the weights won't get appended with _weights
     if not np.any(['weights' in x for x in weights_df.columns.values]):
         rename = {x: x+'_weights' for x in run_params['kernels'].keys()}
         weights_df = weights_df.rename(columns=rename)   
