@@ -869,25 +869,20 @@ def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=
         except:
             failed_to_load.append(oeid)
 
-    print('Couldn\'t find weight matrix for {} sessions'.format(len(failed_to_load)))
+    if len(failed_to_load) > 0:
+        print('Couldn\'t find weight matrix for {} sessions'.format(len(failed_to_load)))
 
     # Merge all the session_dfs, and add more session level info
     weights_df = pd.concat(sessions,sort=False)
     weights_df = pd.merge(weights_df,results_pivoted, \
         on = ['unit_id','ecephys_session_id'],suffixes=('_weights','')) 
   
-    return weights_df 
     # If we didn't compute dropout scores, then there won't be redundant columns, 
     # so the weights won't get appended with _weights
     if not np.any(['weights' in x for x in weights_df.columns.values]):
         rename = {x: x+'_weights' for x in run_params['kernels'].keys()}
         weights_df = weights_df.rename(columns=rename)   
- 
-    # Interpolate everything onto common time base
-    kernels = [x for x in weights_df.columns if 'weights' in x]
-    for kernel in tqdm(kernels, desc='Interpolating kernels'):
-        weights_df = interpolate_kernels(weights_df, run_params, kernel,normalize=normalize)
- 
+
     print('Computing average kernels') 
     # Compute generic image kernel
     weights_df['all-images_weights'] = weights_df.apply(lambda x: np.mean([
@@ -912,45 +907,6 @@ def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=
         x['image6_weights'],
         x['image7_weights']
         ]),axis=1) 
-
-    # make a combined omissions kernel
-    if 'post-omissions_weights' in weights_df:
-        weights_df['all-omissions_weights'] = weights_df.apply(lambda x: compute_all_omissions([
-        x['omissions_weights'],
-        x['post-omissions_weights']
-        ]),axis=1)
-    
-    if 'post-hits_weights' in weights_df:
-        weights_df['all-hits_weights'] = weights_df.apply(lambda x: compute_all_kernels([
-        x['hits_weights'],
-        x['post-hits_weights']
-        ]),axis=1)       
-        weights_df['all-misses_weights'] = weights_df.apply(lambda x: compute_all_kernels([
-        x['misses_weights'],
-        x['post-misses_weights']
-        ]),axis=1)
-        weights_df['all-passive_change_weights'] = weights_df.apply(lambda x: compute_all_kernels([
-        x['passive_change_weights'],
-        x['post-passive_change_weights']
-        ]),axis=1)
-        # Make a combined change kernel
-        weights_df['task_weights'] = weights_df.apply(lambda x: np.mean([
-            x['all-hits_weights'],
-            x['all-misses_weights'],
-            ],axis=0),axis=1)
-
-    # Make a combined change kernel
-    weights_df['task_weights'] = weights_df.apply(lambda x: np.mean([
-        x['hits_weights'],
-        x['misses_weights'],
-        ],axis=0),axis=1)
-
-    # Make a metric of omission excitation/inhibition
-    weights_df['omissions_excited'] = weights_df.apply(lambda x: kernel_excitation(x['omissions_weights']),axis=1)
-    weights_df['hits_excited']      = weights_df.apply(lambda x: kernel_excitation(x['hits_weights']),axis=1)
-    weights_df['misses_excited']    = weights_df.apply(lambda x: kernel_excitation(x['misses_weights']),axis=1)
-    weights_df['task_excited']      = weights_df.apply(lambda x: kernel_excitation(x['task_weights']),axis=1)
-    weights_df['all-images_excited']= weights_df.apply(lambda x: kernel_excitation(x['all-images_weights']),axis=1)
 
     # Return weights_df
     return weights_df 
