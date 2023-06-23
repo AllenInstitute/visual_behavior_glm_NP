@@ -1,21 +1,21 @@
-import warnings
-import visual_behavior_glm_NP.GLM_analysis_tools as gat
-import visual_behavior_glm_NP.GLM_fit_tools as gft
-import visual_behavior_glm_NP.GLM_visualization_tools as gvt
-import visual_behavior_glm_NP.GLM_params as glm_params
+import os
 import sys
+import warnings
+import numpy as np
+import pandas as pd
+import importlib.util
 import matplotlib.pyplot as plt
+
 if sys.version_info.minor <= 7:
     cached_property = property
 else:
     from functools import cached_property
-import importlib.util
-import sys
-import os
-import pandas as pd
-#import visual_behavior.database as db
+
 import visual_behavior_glm_NP.database as db
-import numpy as np
+import visual_behavior_glm_NP.GLM_analysis_tools as gat
+import visual_behavior_glm_NP.GLM_fit_tools as gft
+import visual_behavior_glm_NP.GLM_visualization_tools as gvt
+import visual_behavior_glm_NP.GLM_params as glm_params
 
 class GLM(object):
     '''
@@ -26,14 +26,18 @@ class GLM(object):
        
         log_results (bool): if True, logs results to mongoDB
         log_weights (bool): if True, logs weights to mongoDB 
-        use_previous_fit (bool): if True, attempts to load existing results instead of fitting the model
-        recompute (bool): if True, if the attempt to load the existing results fails, will fit the model instead of crashing
-        use_inputs (bool): if True, gets session, fit, and design objects from inputs=[session, fit, design]
+        use_previous_fit (bool): if True, attempts to load existing results 
+            instead of fitting the model
+        recompute (bool): if True, if the attempt to load the existing results 
+            fails, will fit the model instead of crashing
+        use_inputs (bool): if True, gets session, fit, and design objects from 
+            inputs=[session, fit, design]
         inputs (List): if use_inputs, this must be a list of session, fit, and design objects
     '''
 
-    def __init__(self, ecephys_session_id, version, log_results=True, log_weights=True,use_previous_fit=False, 
-                recompute=True, use_inputs=False, inputs=None, NO_DROPOUTS=False, TESTING=False):
+    def __init__(self, ecephys_session_id, version, log_results=True, log_weights=True,
+        use_previous_fit=False, recompute=True, use_inputs=False, inputs=None, 
+        NO_DROPOUTS=False, TESTING=False):
         
         self.version = version
         self.ecephys_session_id = ecephys_session_id
@@ -48,7 +52,8 @@ class GLM(object):
         self._import_glm_fit_tools()
 
         if use_inputs & (inputs is not None):
-            # If user supplied session, fit, and design objects we dont need to load from file or fit model
+            # If user supplied session, fit, and design objects we dont need to 
+            # load from file or fit model
             self.session = inputs[0]
             self.fit = inputs[1]
             self.design = inputs[2]
@@ -73,23 +78,7 @@ class GLM(object):
         self.collect_results()
         print('done collecting results')
 
-        try:
-            self.timestamps = self.fit['fit_trace_arr']['fit_trace_timestamps'].values
-        except KeyError:
-            # older versions of model don't have `fit_trace_arr` or `events_trace_arr`
-            # in these older versions, the fit trace was always the dff trace
-            # fill in missing keys in this case so that code below will run
-            self.timestamps = self.fit['dff_trace_arr']['dff_trace_timestamps'].values
-            self.fit['fit_trace_arr'] = self.fit['dff_trace_arr'].copy().rename({'dff_trace_timestamps':'fit_trace_timestamps'})
-            self.fit['events_trace_arr'] = self.fit['dff_trace_arr'].copy().rename({'dff_trace_timestamps':'fit_trace_timestamps'})
-            self.fit['dff_trace_arr'] = self.fit['dff_trace_arr'].rename({'dff_trace_timestamps':'fit_trace_timestamps'})
-            # fill events xarray with filtered events values from session
-            for idx in range(np.shape(self.fit['events_trace_arr'])[1]):
-                csid = int(self.fit['events_trace_arr']['cell_specimen_id'][idx])
-                all_events = self.session.events.loc[csid]['filtered_events']
-                # only include events during task (excluding gray screens at beginning/end)
-                first_index = np.where(self.session.ophys_timestamps >= self.timestamps[0])[0][0]
-                self.fit['events_trace_arr'][:,idx] = all_events[first_index:first_index + len(self.timestamps)]
+        self.timestamps = self.fit['spike_count_arr']['bin_centers'].values
 
         if log_results:
             print('logging results to mongo')
@@ -121,7 +110,7 @@ class GLM(object):
         Fits the model
         '''
         self.session, self.fit, self.design = self.gft.fit_experiment(
-            self.oeid, self.run_params, self.NO_DROPOUTS, self.TESTING)
+            self.oeid, self.run_params, self.NO_DROPOUTS)
 
     def load_fit_model(self):
         '''
@@ -134,27 +123,14 @@ class GLM(object):
         '''
             Organizes dropout and model selection results, and adds three dataframes to the object
             self.results is a dataframe of every model-dropout, and information about it.
-            self.dropout_summary is the original dropout summary doug implemented, using the non-adjusted variance explained/dropout
+            self.dropout_summary is uses the non-adjusted variance explained/dropout
             self.adj_dropout_summary uses the adjusted dropout and variance explained 
         '''
+
         self.results = self.gft.build_dataframe_from_dropouts(self.fit,self.run_params)
         self.dropout_summary = gat.generate_results_summary(self)
 
-        # add roi_ids
-        self.dropout_summary = self.dropout_summary.merge(
-            self.session.cell_specimen_table[['cell_roi_id']],
-            left_on='cell_specimen_id',
-            right_index=True,
-            how='left'
-        )
 
-        self.results = self.results.merge(
-            self.session.cell_specimen_table[['cell_roi_id']],
-            left_index=True,
-            right_index=True,
-            how='left'
-        )
- 
     def get_cells_above_threshold(self, threshold=None): 
         '''
             Returns a list of cells whose full model variance explained is above some threshold
