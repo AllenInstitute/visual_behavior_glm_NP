@@ -64,7 +64,7 @@ def already_fit(oeid, version):
     returns a boolean
     '''
     conn = db.Database('visual_behavior_data')
-    coll = conn['ophys_glm']['weight_matrix_lookup_table']
+    coll = conn['np_glm']['weight_matrix_lookup_table']
     document_count = coll.count_documents({'ecephys_session_id':int(oeid), 'glm_version':str(version)})
     conn.close()
     return document_count > 0
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     
             # instantiate a SLURM object
             slurm = Slurm(
-                cpus_per_task=16,
+                cpus_per_task=1,
                 job_name=job_title,
                 time=walltime,
                 mem=mem,
