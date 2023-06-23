@@ -882,6 +882,9 @@ def build_dataframe_from_dropouts(fit,run_params):
             results.loc[results[model_label+"__avg_cv_adjvar_test_full_comparison"] < threshold, model_label+"__adj_dropout"] = 0
             results.loc[results[model_label+"__avg_cv_var_test_full_comparison"] < threshold, model_label+"__dropout"] = 0
 
+            # fragmentation issues were causing headaches:
+            results = results.copy()
+
     ## Check for NaNs in any column 
     assert results['Full__avg_cv_var_test'].isnull().sum() == 0, "NaNs in variance explained"  
     assert results['Full__avg_cv_var_train'].isnull().sum() == 0, "NaNs in variance explained"  
@@ -1021,9 +1024,11 @@ def extract_and_annotate_ephys(session, run_params):
 def active_passive_split(session,run_params):
     # Determine relevant stimuli for this fit
     if run_params['active']:
+        print('active session')
         session.filtered_stimulus = \
             session.stimulus_presentations.query('active').copy()
     else:
+        print('passive session')
         session.filtered_stimulus = \
             session.stimulus_presentations.query('stimulus_block == 5').copy()   
     session = add_image_index(session)
