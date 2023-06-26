@@ -7,6 +7,7 @@ import visual_behavior_glm_NP.GLM_visualization_tools as gvt
 import visual_behavior_glm_NP.GLM_analysis_tools as gat
 import visual_behavior_glm_NP.GLM_schematic_plots as gsm
 import visual_behavior_glm_NP.GLM_fit_tools as gft
+import visual_behavior_glm_NP.GLM_cell_metrics as gcm
 from importlib import reload
 from alex_utils.alex_utils import *
 plt.ion()
@@ -43,7 +44,31 @@ if False:
     results = gat.get_summary_results(version)
     results_pivoted = gat.get_pivoted_results(results)
     weights_df = gat.get_weights_df(version, results_pivoted)
+
+    # Evaluate model fit quality
+    stats = gvt.var_explained_by_experience(results_pivoted, run_params)
+  
+    # Get boxplot of coding scores by experience 
+    stats = gvt.plot_dropout_summary_population(results, run_params) 
+    stats = gvt.plot_dropout_summary_by_area(results, run_params, 
+        'all-images')
+    stats = gvt.plot_dropout_summary_by_area(results, run_params, 
+        'omissions')
+    stats = gvt.plot_dropout_summary_by_area(results, run_params, 
+        'behavioral')
+    stats = gvt.plot_dropout_summary_by_area(results, run_params, 
+        'task')
     
+    # Kernel plots
+    gvt.kernel_evaluation(weights_df, run_params, 'omissions',
+        session_filter=['Familiar'])
+    gvt.plot_kernel_comparison(weights_df, run_params, 'omissions') 
+    gvt.plot_kernel_comparison(weights_df, run_params, 'all-images') 
+    gvt.plot_kernel_comparison(weights_df, run_params, 'hits') 
+    gvt.plot_kernel_comparison(weights_df, run_params, 'misses') 
+    gvt.plot_kernel_comparison(weights_df, run_params, 'licks') 
+    gvt.plot_kernel_comparison(weights_df, run_params, 'running') 
+    gvt.plot_kernel_comparison(weights_df, run_params, 'pupil') 
 
 def get_analysis_dfs(version):
     run_params = glm_params.load_run_json(version)
