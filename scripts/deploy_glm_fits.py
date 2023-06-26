@@ -44,7 +44,8 @@ parser.add_argument(
 
 def calculate_required_mem(unit_count):
     '''calculate required memory in GB'''
-    return 12 + 0.25*unit_count
+    #return 12 + 0.25*unit_count
+    return 20
 
 def calculate_required_walltime(unit_count):
     '''calculate required walltime in hours'''
