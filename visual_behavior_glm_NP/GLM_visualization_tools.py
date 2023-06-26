@@ -31,6 +31,10 @@ from sklearn.decomposition import PCA
 
 NEURO_DIR = '/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
 
+def get_area_order(results_pivoted):
+    areas = results_pivoted['structure_acronym'].unique()
+    return np.sort(areas)
+
 def project_colors():
     '''
         Defines a color scheme for various conditions
@@ -78,7 +82,7 @@ def project_colors():
         'familiar':(222/255,73/255,70/255),
         'novel':(100/255,152/255,193/255),
         'Familiar':(0.66,0.06,0.086),
-        'Novel 1':(0.044,0.33,0.62),
+        'Novel':(0.044,0.33,0.62),
         'Novel >1':(0.34,.17,0.57),
         'deep':'r',
         'shallow':'b',
@@ -633,36 +637,33 @@ def var_explained_matched(results_pivoted, run_params):
 def var_explained_by_experience(results_pivoted, run_params,threshold = 0,savefig=False):
     
     if threshold != 0:
-        results_pivoted = results_pivoted.query('(not passive) & (variance_explained_full > @threshold)').copy()
+        results_pivoted = results_pivoted.query('(variance_explained_full > @threshold)').copy()
     else:
-         results_pivoted = results_pivoted.query('not passive').copy()   
+         results_pivoted = results_pivoted.copy()   
 
     colors = project_colors()
-    mapper = {
-        'Slc17a7-IRES2-Cre':'Excitatory',
-        'Sst-IRES-Cre':'Sst Inhibitory',
-        'Vip-IRES-Cre':'Vip Inhibitory'
-        }
-    results_pivoted['cell_type'] = [mapper[x] for x in results_pivoted['cre_line']]
     results_pivoted['variance_explained_percent'] = results_pivoted['variance_explained_full']*100
-    plt.figure()
+    plt.figure(figsize=(12,5))
+    area_order = get_area_order(results_pivoted)
     ax = sns.boxplot(
-        x='cell_type',
-        y='variance_explained_percent',
+        x='structure_acronym',
         hue='experience_level',
+        y='variance_explained_percent',
         data=results_pivoted,
-        hue_order=['Familiar','Novel 1','Novel >1'],
-        order=['Vip Inhibitory','Sst Inhibitory','Excitatory'],
+        order=area_order,
+        hue_order=['Familiar','Novel'],
         palette=colors,
         fliersize=0,
         linewidth=1,
     )
     ax.set_ylabel('Variance Explained (%)',fontsize=18)
-    ax.set_xlabel('Cell Type',fontsize=18)
+    ax.set_xlabel('Experience Level ({})'.format(run_params['version'])\
+        ,fontsize=18)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    plt.ylim(0,40)
-    plt.tick_params(axis='both',labelsize=14)
+    plt.ylim(0,30)
+    plt.tick_params(axis='both',labelsize=12)
+    plt.tick_params(axis='x',rotation=90)
     plt.tight_layout() 
     if savefig:
         if threshold !=0:
@@ -675,7 +676,7 @@ def var_explained_by_experience(results_pivoted, run_params,threshold = 0,savefi
             plt.savefig(run_params['figure_dir']+'/variance_explained_by_experience.png')
             print('Figure saved to: ' + filename)
             plt.savefig(filename)
-    return results_pivoted.groupby(['cell_type','experience_level'])['variance_explained_percent'].describe()
+    return results_pivoted.groupby(['experience_level'])['variance_explained_percent'].describe()
 
 def compare_var_explained_by_version(results=None, fig=None, ax=None, test_data=True, figsize=(9,5), use_violin=True,cre=None,metric='Full',show_equipment=True,zoom_xlim=True,sort_by_signal=True):
     '''
@@ -4488,7 +4489,144 @@ def plot_dropout_individual_population(results, run_params,ax=None,palette=None,
 
     return data_to_plot.groupby(['cre_line','dropout'])['explained_variance'].describe()
 
-def plot_dropout_summary_population(results, run_params,dropouts_to_show =  ['all-images','omissions','behavioral','task'],ax=None,palette=None,use_violin=False,add_median=True,include_zero_cells=True,add_title=False,dropout_cleaning_threshold=None, exclusion_threshold=None,savefig=False): 
+def plot_dropout_summary_by_area(results, run_params,dropout='all-images',
+    ax=None,palette=None,use_violin=False,add_median=True,
+    include_zero_cells=True,add_title=False,
+    dropout_cleaning_threshold=None, exclusion_threshold=None,
+    savefig=False): 
+    '''
+        Makes a bar plot that shows the population dropout summary by cre line for different regressors 
+        palette , color palette to use. If None, uses gvt.project_colors()
+        use_violion (bool) if true, uses violin, otherwise uses boxplots
+        add_median (bool) if true, adds a line at the median of each population
+        include_zero_cells (bool) if true, uses all cells, otherwise uses a threshold for minimum variance explained
+    '''
+    dropouts_to_show=[dropout]
+    if ax is None:
+        height = 4
+        width=12
+        horz_offset = 2
+        vertical_offset = 1
+        fig = plt.figure(figsize=(width,height))
+        h = [Size.Fixed(horz_offset),Size.Fixed(width-horz_offset-.5)]
+        v = [Size.Fixed(vertical_offset),Size.Fixed(height-vertical_offset-.5)]
+        divider = Divider(fig, (0,0,1,1),h,v,aspect=False)
+        ax = fig.add_axes(divider.get_position(), axes_locator=divider.new_locator(nx=1,ny=1))  
+ 
+    if palette is None:
+        palette = project_colors()
+
+    if include_zero_cells:
+        threshold = 0
+    else:
+        threshold=exclusion_threshold
+        # if 'dropout_threshold' in run_params:
+        #     threshold = run_params['dropout_threshold']
+        # else:
+        #     threshold = 0.005
+
+    cre_lines = ['Vip-IRES-Cre','Sst-IRES-Cre','Slc17a7-IRES2-Cre']
+
+    if ('post-omissions' in results.dropout.unique())&('omissions' in dropouts_to_show):
+       dropouts_to_show = ['all-omissions' if x == 'omissions' else x for x in dropouts_to_show]
+    if ('post-hits' in results.dropout.unique())&('hits' in dropouts_to_show):
+       dropouts_to_show = ['all-hits' if x == 'hits' else x for x in dropouts_to_show]
+    if ('post-misses' in results.dropout.unique())&('misses' in dropouts_to_show):
+       dropouts_to_show = ['all-misses' if x == 'misses' else x for x in dropouts_to_show]
+    if ('post-passive_change' in results.dropout.unique())&('passive_change' in dropouts_to_show):
+       dropouts_to_show = ['all-passive_change' if x == 'passive_change' else x for x in dropouts_to_show]
+ 
+    data_to_plot = results.query('dropout in @dropouts_to_show and variance_explained_full > {}'.format(threshold)).copy()
+    data_to_plot['explained_variance'] = -1*data_to_plot['adj_fraction_change_from_full']
+    if dropout_cleaning_threshold is not None:
+        print('Clipping dropout scores for cells with full model VE < '+str(dropout_cleaning_threshold))
+        data_to_plot.loc[data_to_plot['adj_variance_explained_full']<dropout_cleaning_threshold,'explained_variance'] = 0 
+   
+    area_order = get_area_order(results) 
+    if use_violin:
+        plot1= sns.violinplot(
+            data = data_to_plot,
+            x='dropout',
+            y='explained_variance',
+            hue='experience_level',
+            order=dropouts_to_show,
+            hue_order=['Familiar','Novel'],
+            fliersize=0,
+            ax=ax,
+            inner='quartile',
+            linewidth=0,
+            palette=palette,
+            cut = 0
+        )
+        if add_median:
+            lines = plot1.get_lines()
+            for index, line in enumerate(lines):
+                if np.mod(index,3) == 0:
+                    line.set_linewidth(0)
+                elif np.mod(index,3) == 1:
+                    line.set_linewidth(1)
+                    line.set_color('r')
+                    line.set_linestyle('-')
+                elif np.mod(index,3) == 2:
+                    line.set_linewidth(0)
+        plt.axhline(0,color='k',alpha=.25)
+
+    else:
+        sns.boxplot(
+            data = data_to_plot,
+            x='structure_acronym',
+            y='explained_variance',
+            hue='experience_level',
+            order=area_order,
+            hue_order=['Familiar','Novel'],
+            fliersize=0,
+            ax=ax,
+            palette=palette,
+            width=.7,
+        )
+    ax.set_ylim(0,1)
+    h,labels =ax.get_legend_handles_labels()
+
+    mylabels = labels 
+    ax.legend(h,mylabels,loc='upper right',fontsize=16)
+
+    dropout = dropouts_to_show[0]
+    ax.set_ylabel('{}\nCoding Score'.format(dropout),fontsize=20)
+    ax.set_xlabel('Structure',fontsize=20)
+    #ax.set_xticks([0,1,2,3])
+    #ax.set_xticklabels(['images','omissions','behavioral','task'])
+    ax.tick_params(axis='x',labelsize=12,rotation=90)
+    ax.tick_params(axis='y',labelsize=16)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    if add_title:
+        plt.title(run_params['version'])
+    if dropout_cleaning_threshold is not None:
+        extra ='_'+str(dropout_cleaning_threshold) 
+    elif not include_zero_cells:
+        extra ='_remove_'+str(exclusion_threshold)
+    else:
+        extra=''
+    extra += '_{}'.format(dropout)
+    if savefig:
+        if use_violin:
+            filename = run_params['figure_dir']+'/dropout_summary'+extra+'.svg'
+            plt.savefig(filename)
+        else:
+            filename = run_params['figure_dir']+'/dropout_summary_boxplot'+extra+'.svg'
+            print('Figure saved to: '+filename)
+            plt.savefig(filename)
+            plt.savefig(run_params['figure_dir']+'/dropout_summary_boxplot'+extra+'.png')
+    return data_to_plot.groupby(['experience_level','dropout'])['explained_variance'].describe() 
+
+
+
+def plot_dropout_summary_population(results, run_params,
+    dropouts_to_show =  ['all-images','omissions','behavioral','task'],
+    ax=None,palette=None,use_violin=False,add_median=True,
+    include_zero_cells=True,add_title=False,
+    dropout_cleaning_threshold=None, exclusion_threshold=None,
+    savefig=False): 
     '''
         Makes a bar plot that shows the population dropout summary by cre line for different regressors 
         palette , color palette to use. If None, uses gvt.project_colors()
@@ -4530,20 +4668,20 @@ def plot_dropout_summary_population(results, run_params,dropouts_to_show =  ['al
     if ('post-passive_change' in results.dropout.unique())&('passive_change' in dropouts_to_show):
        dropouts_to_show = ['all-passive_change' if x == 'passive_change' else x for x in dropouts_to_show]
  
-    data_to_plot = results.query('not passive').query('dropout in @dropouts_to_show and variance_explained_full > {}'.format(threshold)).copy()
+    data_to_plot = results.query('dropout in @dropouts_to_show and variance_explained_full > {}'.format(threshold)).copy()
     data_to_plot['explained_variance'] = -1*data_to_plot['adj_fraction_change_from_full']
     if dropout_cleaning_threshold is not None:
         print('Clipping dropout scores for cells with full model VE < '+str(dropout_cleaning_threshold))
         data_to_plot.loc[data_to_plot['adj_variance_explained_full']<dropout_cleaning_threshold,'explained_variance'] = 0 
-
+    
     if use_violin:
         plot1= sns.violinplot(
             data = data_to_plot,
             x='dropout',
             y='explained_variance',
-            hue='cre_line',
+            hue='experience_level',
             order=dropouts_to_show,
-            hue_order=cre_lines,
+            hue_order=['Familiar','Novel'],
             fliersize=0,
             ax=ax,
             inner='quartile',
@@ -4569,9 +4707,9 @@ def plot_dropout_summary_population(results, run_params,dropouts_to_show =  ['al
             data = data_to_plot,
             x='dropout',
             y='explained_variance',
-            hue='cre_line',
+            hue='experience_level',
             order=dropouts_to_show,
-            hue_order=cre_lines,
+            hue_order=['Familiar','Novel'],
             fliersize=0,
             ax=ax,
             palette=palette,
@@ -4579,14 +4717,10 @@ def plot_dropout_summary_population(results, run_params,dropouts_to_show =  ['al
         )
     ax.set_ylim(0,1)
     h,labels =ax.get_legend_handles_labels()
-    clean_labels={
-        'Slc17a7-IRES2-Cre':'Excitatory',
-        'Sst-IRES-Cre':'Sst Inhibitory',
-        'Vip-IRES-Cre':'Vip Inhibitory'
-        }
-    mylabels = [clean_labels[x] for x in labels]
+
+    mylabels = labels 
     ax.legend(h,mylabels,loc='upper right',fontsize=16)
-    #ax.set_ylabel('Fraction reduction \nin explained variance',fontsize=20)
+
     ax.set_ylabel('Coding Score',fontsize=20)
     ax.set_xlabel('Withheld component',fontsize=20)
     ax.set_xticks([0,1,2,3])
@@ -4612,7 +4746,7 @@ def plot_dropout_summary_population(results, run_params,dropouts_to_show =  ['al
             print('Figure saved to: '+filename)
             plt.savefig(filename)
             plt.savefig(run_params['figure_dir']+'/dropout_summary_boxplot'+extra+'.png')
-    return data_to_plot.groupby(['cre_line','dropout'])['explained_variance'].describe() 
+    return data_to_plot.groupby(['experience_level','dropout'])['explained_variance'].describe() 
 
 def plot_fraction_summary_population(results_pivoted, run_params,sharey=True,kernel_excitation=False,kernel=None,savefig=False):
     if kernel_excitation:
