@@ -2292,7 +2292,7 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         threshold = 0.005
 
     # Set up time vectors.
-    if kernel in ['preferred_image', 'all-images']:
+    if kernel in ['preferred_image', 'all-images','shared_image','non_shared_image']:
         run_params['kernels'][kernel] = run_params['kernels']['image0'].copy()
     if kernel == 'all-omissions':
         run_params['kernels'][kernel] = run_params['kernels']['omissions'].copy()
@@ -2369,6 +2369,8 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         weights = weights_df.query('(variance_explained_full > 0)'.format(filter_sessions_on)) 
         print('Dropouts not included, cannot use drop filter')
         use_dropouts=False
+        plot_dropout_sorted=False
+        
 
     # Have to do a manual filtering step here because weird things happen when combining
     # two kernels
