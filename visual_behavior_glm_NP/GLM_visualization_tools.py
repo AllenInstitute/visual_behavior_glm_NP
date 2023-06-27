@@ -634,7 +634,8 @@ def var_explained_matched(results_pivoted, run_params):
  
  
 
-def var_explained_by_experience(results_pivoted, run_params,threshold = 0,savefig=False):
+def var_explained_by_experience(results_pivoted, run_params,threshold = 0,savefig=False,
+    sort_order='variance'):
     
     if threshold != 0:
         results_pivoted = results_pivoted.query('(variance_explained_full > @threshold)').copy()
@@ -644,7 +645,10 @@ def var_explained_by_experience(results_pivoted, run_params,threshold = 0,savefi
     colors = project_colors()
     results_pivoted['variance_explained_percent'] = results_pivoted['variance_explained_full']*100
     plt.figure(figsize=(12,5))
-    area_order = get_area_order(results_pivoted)
+    if sort_order =='alphabetical':
+        area_order = get_area_order(results_pivoted)
+    elif sort_order=='variance':
+        area_order = results_pivoted.groupby('structure_acronym')['variance_explained_percent'].mean().sort_values().index.values
     ax = sns.boxplot(
         x='structure_acronym',
         hue='experience_level',
@@ -664,6 +668,11 @@ def var_explained_by_experience(results_pivoted, run_params,threshold = 0,savefi
     plt.ylim(0,30)
     plt.tick_params(axis='both',labelsize=12)
     plt.tick_params(axis='x',rotation=90)
+    h,labels =ax.get_legend_handles_labels()
+
+    mylabels = labels 
+    ax.legend(h,mylabels,loc='upper left',fontsize=16)
+
     plt.tight_layout() 
     if savefig:
         if threshold !=0:
