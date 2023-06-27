@@ -1291,13 +1291,18 @@ def inventory_glm_version(glm_version):
         glm_results['unit_id'] = [] 
  
     # Get list of cells in the dataset
-    cell_table = glm_params.get_unit_table().query('good_unit')
+    cell_table = glm_params.get_unit_table().query(
+        '(isi_violations < 0.5) & '+\
+        '(amplitude_cutoff < 0.1) & '+\
+        '(presence_ratio > 0.95) & '+\
+        '(quality == "good")').copy()
 
     # get list of rois and experiments we have fit
     total_sessions = glm_results['ecephys_session_id'].unique()
     total_units = glm_results['unit_id'].unique()
 
-    # Compute list of units and sessions that we have fit that are in the dataset
+    # Compute list of units and sessions that we have fit 
+    # that are in the dataset
     fit_sessions = list(
         set(cell_table['ecephys_session_id'].unique()) &
         set(glm_results['ecephys_session_id'].unique())
