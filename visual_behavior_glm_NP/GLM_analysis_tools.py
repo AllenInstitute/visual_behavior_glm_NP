@@ -829,12 +829,14 @@ def process_session_to_df(oeid, run_params):
     session_df['ecephys_session_id'] = [int(oeid)]*len(W.unit_id.values)  
     
     # For each kernel, extract the weights for this kernel
+    scale = 1/run_params['spike_bin_width']
     for k in run_params['kernels']:
         weight_names = [w for w in W.weights.values if w.startswith(k)]
         
         # Check if this kernel was in this model
         if len(weight_names) > 0:
             session_df[k] = W.loc[dict(weights=weight_names)].values.T.tolist()
+            session_df[k] = [list(np.array(x)*scale) for x in session_df[k].values]
     return session_df
 
 

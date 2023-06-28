@@ -2259,7 +2259,7 @@ def plot_kernel_comparison_shared_images(weights_df,run_params):
         label='Familiar Non-Shared',linewidth=4)
     sax.legend(loc='upper left',bbox_to_anchor=(1.05,1),handlelength=4)
 
-def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_threshold=0,session_filter=['Familiar','Novel'],area_filter=['VISp','VISl'],depth_filter=[0,1000],filter_sessions_on='experience_level',plot_dropout_sorted=True):  
+def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_threshold=0,session_filter=['Familiar','Novel'],area_filter=[],depth_filter=[0,1000],filter_sessions_on='experience_level',plot_dropout_sorted=True):  
     '''
         Plots the average kernel for each cell line. 
         Plots the heatmap of the kernels sorted by time. 
@@ -2283,6 +2283,9 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
     if drop_threshold <= -1:
         print('Are you sure you mean to use a drop threshold beyond -1?')
 
+    if len(area_filter) == 0:
+        area_filter = weights_df['structure_acronym'].unique()
+
     # Filter by Equipment
     filter_string=''  
     # Determine filename
@@ -2290,7 +2293,7 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         filter_string+= '_sessions_'+'_'.join([str(x) for x in session_filter])   
     if depth_filter !=[0,1000]:
         filter_string+='_depth_'+str(depth_filter[0])+'_'+str(depth_filter[1])
-    if area_filter != ['VISp','VISl']:
+    if len(area_filter) > 0:
         filter_string+='_area_'+'_'.join(area_filter)
     filename = os.path.join(run_params['fig_kernels_dir'],kernel+'_evaluation_'+filter_string+'.png')
     filename_svg = os.path.join(run_params['fig_kernels_dir'],kernel+'_evaluation_'+filter_string+'.svg')
@@ -2374,10 +2377,10 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
     # don't apply overall VE, or dropout threshold limits here, since we look at the effects of those criteria below. 
     # we do remove NaN dropouts here
     if kernel in weights_df:
-        weights = weights_df.query('(variance_explained_full > 0) & ({1} <= 0)'.format(filter_sessions_on, kernel))
+        weights = weights_df.query('({0} in @session_filter)&(structure_acronym in @area_filter)&(variance_explained_full > 0) & ({1} <= 0)'.format(filter_sessions_on, kernel))
         use_dropouts=True
     else:
-        weights = weights_df.query('(variance_explained_full > 0)'.format(filter_sessions_on)) 
+        weights = weights_df.query('({0} in @session_filter)&(structure_acronym in @area_filter)&(variance_explained_full > 0)'.format(filter_sessions_on)) 
         print('Dropouts not included, cannot use drop filter')
         use_dropouts=False
         plot_dropout_sorted=False
@@ -2413,7 +2416,7 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
     # Plot
     ax[0,0].plot(time_vec, slc.mean(axis=0),label='SLC (n='+str(n_slc)+')',color=colors['slc'],linewidth=2)
     ax[0,0].axhline(0, color='k',linestyle='--',alpha=line_alpha)
-    ax[0,0].set_ylabel('Weights (df/f)')
+    ax[0,0].set_ylabel('Weights (spikes/sec)')
     ax[0,0].set_xlabel('Time (s)')
     ax[0,0].legend()
     ax[0,0].set_title('Average kernel')
@@ -2433,7 +2436,7 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         slc_f[:] = np.nan
     ax[1,0].plot(time_vec, slc_f.mean(axis=0),label='SLC (n='+str(n_slc)+')',color=colors['slc'],linewidth=2)
     ax[1,0].axhline(0, color='k',linestyle='--',alpha=line_alpha)
-    ax[1,0].set_ylabel('Weights (df/f)')
+    ax[1,0].set_ylabel('Weights (spikes/sec)')
     ax[1,0].set_xlabel('Time (s)')
     ax[1,0].legend()
     ax[1,0].set_title('Filtered on Full Model VE > '+str(threshold))
@@ -2457,7 +2460,7 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
     
         ax[2,0].plot(time_vec, slc_df.mean(axis=0),label='SLC (n='+str(n_slc)+')',color=colors['slc'],linewidth=2)
         ax[2,0].axhline(0, color='k',linestyle='--',alpha=line_alpha)
-        ax[2,0].set_ylabel('Weights (df/f)')
+        ax[2,0].set_ylabel('Weights (spikes/sec)')
         ax[2,0].set_xlabel('Time (s)')
         ax[2,0].legend()
         ax[2,0].set_title('Filtered on Dropout Score < '+str(drop_threshold))
@@ -4799,7 +4802,7 @@ def make_cosyne_summary_figure(glm, cell_specimen_id, t_span,dropout_df,alpha =0
         )
 
 
-    # cell df/f plots:
+    # cell spikes/sec plots:
 
     this_cell = glm.cell_results_df.query('cell_specimen_id == @cell_specimen_id')
     cell_index = np.where(glm.W['cell_specimen_id'] == cell_specimen_id)[0][0]
@@ -5421,7 +5424,7 @@ def compare_events_and_dff(results_pivoted_dff, results_pivoted_events,savefig=F
         cre_slice = joint.query('cre_line_dff ==@cre')
         ax[0].plot(cre_slice['variance_explained_full_dff'],cre_slice['variance_explained_full_events'],'o',alpha=.2,color=project_colors()[cre],label=cre)
     ax[0].set_ylabel('Variance Explained (events)')
-    ax[0].set_xlabel('Variance Explained (df/f)')
+    ax[0].set_xlabel('Variance Explained (spikes/sec)')
     ax[0].plot([0,1],[0,1],'r--',alpha=.5)
     ax[0].set_aspect('equal')
     ax[0].set_xlim(0,1)

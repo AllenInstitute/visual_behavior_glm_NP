@@ -50,18 +50,16 @@ if False:
   
     # Get boxplot of coding scores by experience 
     stats = gvt.plot_dropout_summary_population(results, run_params) 
-    stats = gvt.plot_dropout_summary_by_area(results, run_params, 
-        'all-images')
-    stats = gvt.plot_dropout_summary_by_area(results, run_params, 
-        'omissions')
-    stats = gvt.plot_dropout_summary_by_area(results, run_params, 
-        'behavioral')
-    stats = gvt.plot_dropout_summary_by_area(results, run_params, 
-        'task')
+    stats = gvt.plot_dropout_summary_by_area(results, run_params, 'all-images')
+    stats = gvt.plot_dropout_summary_by_area(results, run_params, 'omissions')
+    stats = gvt.plot_dropout_summary_by_area(results, run_params, 'behavioral')
+    stats = gvt.plot_dropout_summary_by_area(results, run_params, 'task')
     
     # Kernel plots
     gvt.kernel_evaluation(weights_df, run_params, 'omissions',
         session_filter=['Familiar'])
+    gvt.kernel_evaluation(weights_df, run_params, 'omissions',
+        area_filter=['CA1'])
     gvt.plot_kernel_comparison(weights_df, run_params, 'omissions') 
     gvt.plot_kernel_comparison(weights_df, run_params, 'all-images') 
     gvt.plot_kernel_comparison(weights_df, run_params, 'hits') 
@@ -69,6 +67,8 @@ if False:
     gvt.plot_kernel_comparison(weights_df, run_params, 'licks') 
     gvt.plot_kernel_comparison(weights_df, run_params, 'running') 
     gvt.plot_kernel_comparison(weights_df, run_params, 'pupil') 
+
+    # Shared/Non Shared images
     gvt.plot_kernel_comparison(weights_df, run_params, 'shared_image')
     gvt.plot_kernel_comparison(weights_df, run_params, 'non_shared_image')
     gvt.plot_kernel_comparison_shared_images(weights_df,run_params)
