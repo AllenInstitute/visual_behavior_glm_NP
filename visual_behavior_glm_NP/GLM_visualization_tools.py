@@ -1973,7 +1973,7 @@ def plot_kernel_comparison_by_kernel_excitation(weights_df, run_params,kernel,sa
     plot_kernel_comparison(weights_df,run_params,kernel,session_filter=['Novel 1'],cell_filter='Vip-IRES-Cre',compare=[kernel+'_excited'], set_title='Vip Inhibitory, Novel 1, '+nk,save_results=savefig)
     plot_kernel_comparison(weights_df,run_params,kernel,session_filter=['Novel >1'],cell_filter='Vip-IRES-Cre',compare=[kernel+'_excited'],set_title='Vip Inhibitory, Novel >1, '+nk,save_results=savefig)
 
-def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, drop_threshold=0,session_filter=['Familiar','Novel 1','Novel >1'],equipment_filter="all",depth_filter=[0,1000],cell_filter="all",area_filter=['VISp','VISl'],compare=['experience_level'],plot_errors=False,save_kernels=False,fig=None, ax=None,fs1=20,fs2=16,show_legend=True,filter_sessions_on='experience_level',image_set=['familiar','novel'],threshold=0,set_title=None): 
+def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, drop_threshold=0,session_filter=['Familiar','Novel 1','Novel >1'],equipment_filter="all",depth_filter=[0,1000],cell_filter="all",area_filter=[],compare=['experience_level'],plot_errors=False,save_kernels=False,fig=None, ax=None,fs1=20,fs2=16,show_legend=True,filter_sessions_on='experience_level',image_set=['familiar','novel'],threshold=0,set_title=None): 
     '''
         Plots the average kernel across different comparisons groups of cells
         First applies hard filters, then compares across remaining cells
@@ -2005,35 +2005,17 @@ def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, dr
     #    threshold = 0.005
     #threshold = 0
  
-    # Filter by Equipment
-    equipment_list = ["CAM2P.3","CAM2P.4","CAM2P.5","MESO.1"]
-    if equipment_filter == "scientifica": 
-        equipment_list = ["CAM2P.3","CAM2P.4","CAM2P.5"]
-        filter_string += '_scientifica'
-    elif equipment_filter == "mesoscope":
-        equipment_list = ["MESO.1"]
-        filter_string += '_mesoscope'
-    
-    # Filter by Cell Type    
-    cell_list = ['Sst-IRES-Cre','Slc17a7-IRES2-Cre','Vip-IRES-Cre']     
-    if (cell_filter == "sst") or (cell_filter == "Sst-IRES-Cre"):
-        cell_list = ['Sst-IRES-Cre']
-        filter_string += '_sst'
-    elif (cell_filter == "vip") or (cell_filter == "Vip-IRES-Cre"):
-        cell_list = ['Vip-IRES-Cre']
-        filter_string += '_vip'
-    elif (cell_filter == "slc") or (cell_filter == "Slc17a7-IRES2-Cre"):
-        cell_list = ['Slc17a7-IRES2-Cre']
-        filter_string += '_slc'
 
     # Determine filename
-    if session_filter != [1,2,3,4,5,6]:
-        filter_string+= '_sessions_'+'_'.join([str(x) for x in session_filter])   
-    if depth_filter !=[0,1000]:
-        filter_string+='_depth_'+str(depth_filter[0])+'_'+str(depth_filter[1])
-    if area_filter != ['VISp','VISl']:
+
+    if len(area_filter) == 0:
+        area_filter = weights_df['structure_acronym'].unique()
+        input_area_filter=[]
+    else:
+        input_area_filter = area_filter
         filter_string+='_area_'+'_'.join(area_filter)
-    filename = os.path.join(run_params['fig_kernels_dir'],kernel+'_comparison_by_'+'_and_'.join(compare)+filter_string+'.svg')
+
+    filename = os.path.join(run_params['fig_kernels_dir'],kernel+'_comparison_by_experience'+filter_string+'.png')
 
     # Set up time vectors.
     if kernel in ['preferred_image', 'all-images','shared_image','non_shared_image','shared_image_corrected','non_shared_image_corrected']:
@@ -2093,10 +2075,10 @@ def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, dr
 
     # Applying hard thresholds to dataset
     if kernel in weights_df:
-        weights = weights_df.query('(variance_explained_full > @threshold) & ({1} <= @drop_threshold)'.format(filter_sessions_on, kernel))
+        weights = weights_df.query('(structure_acronym in @area_filter)&(variance_explained_full > @threshold) & ({1} <= @drop_threshold)'.format(filter_sessions_on, kernel))
         use_dropouts=True
     else:
-        weights = weights_df.query('(variance_explained_full > @threshold)'.format(filter_sessions_on))
+        weights = weights_df.query('(structure_acronym in @area_filter)&(variance_explained_full > @threshold)'.format(filter_sessions_on))
         print('Dropouts not included, cannot use drop filter')
         use_dropouts=False
 
@@ -2182,7 +2164,7 @@ def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, dr
             session_title = mapper[session_filter[0]]
  
         #plt.title(run_params['version']+'\n'+kernel+' '+cell_filter+' '+session_title)
-        plt.title(kernel+' kernels ({})'.format(run_params['version'])+session_title,fontsize=fs1)
+        plt.title(kernel+' ({})'.format(' '.join(input_area_filter))+session_title,fontsize=fs1)
     ax.axhline(0, color='k',linestyle='--',alpha=0.25)
     #ax.axvline(0, color='k',linestyle='--',alpha=0.25)
     ax.set_ylabel('Kernel Weights (spikes/s)',fontsize=fs1)      
@@ -2283,9 +2265,6 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
     if drop_threshold <= -1:
         print('Are you sure you mean to use a drop threshold beyond -1?')
 
-    if len(area_filter) == 0:
-        area_filter = weights_df['structure_acronym'].unique()
-
     # Filter by Equipment
     filter_string=''  
     # Determine filename
@@ -2293,8 +2272,13 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         filter_string+= '_sessions_'+'_'.join([str(x) for x in session_filter])   
     if depth_filter !=[0,1000]:
         filter_string+='_depth_'+str(depth_filter[0])+'_'+str(depth_filter[1])
-    if len(area_filter) > 0:
+    if len(area_filter) == 0:
+        area_str = 'all'
+        area_filter = weights_df['structure_acronym'].unique()
+    else:
+        area_str = ' '.join(area_filter)
         filter_string+='_area_'+'_'.join(area_filter)
+        
     filename = os.path.join(run_params['fig_kernels_dir'],kernel+'_evaluation_'+filter_string+'.png')
     filename_svg = os.path.join(run_params['fig_kernels_dir'],kernel+'_evaluation_'+filter_string+'.svg')
     problem_sessions = get_problem_sessions()
@@ -2414,12 +2398,12 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         slc[:] = np.nan
 
     # Plot
-    ax[0,0].plot(time_vec, slc.mean(axis=0),label='SLC (n='+str(n_slc)+')',color=colors['slc'],linewidth=2)
+    ax[0,0].plot(time_vec, slc.mean(axis=0),label='n='+str(n_slc),color=colors['slc'],linewidth=2)
     ax[0,0].axhline(0, color='k',linestyle='--',alpha=line_alpha)
     ax[0,0].set_ylabel('Weights (spikes/sec)')
     ax[0,0].set_xlabel('Time (s)')
     ax[0,0].legend()
-    ax[0,0].set_title('Average kernel')
+    ax[0,0].set_title(area_str+' '+'_'.join(session_filter))
     ax[0,0].set_xlim(time_vec[0]-0.05,time_vec[-1])   
     add_stimulus_bars(ax[0,0],kernel)
     slc = slc.T
@@ -2434,7 +2418,7 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
     else:
         slc_f = np.empty((2,len(time_vec)))
         slc_f[:] = np.nan
-    ax[1,0].plot(time_vec, slc_f.mean(axis=0),label='SLC (n='+str(n_slc)+')',color=colors['slc'],linewidth=2)
+    ax[1,0].plot(time_vec, slc_f.mean(axis=0),label='n='+str(n_slc),color=colors['slc'],linewidth=2)
     ax[1,0].axhline(0, color='k',linestyle='--',alpha=line_alpha)
     ax[1,0].set_ylabel('Weights (spikes/sec)')
     ax[1,0].set_xlabel('Time (s)')
@@ -2458,7 +2442,7 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
             slc_df = np.empty((2,len(time_vec)))
             slc_df[:] = np.nan
     
-        ax[2,0].plot(time_vec, slc_df.mean(axis=0),label='SLC (n='+str(n_slc)+')',color=colors['slc'],linewidth=2)
+        ax[2,0].plot(time_vec, slc_df.mean(axis=0),label='n='+str(n_slc),color=colors['slc'],linewidth=2)
         ax[2,0].axhline(0, color='k',linestyle='--',alpha=line_alpha)
         ax[2,0].set_ylabel('Weights (spikes/sec)')
         ax[2,0].set_xlabel('Time (s)')
@@ -2678,7 +2662,7 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
     if save_results:
         print('Figure Saved to: '+filename)
         plt.savefig(filename) 
-        plt.savefig(filename_svg)
+        #plt.savefig(filename_svg)
 
 def all_kernels_evaluation(weights_df, run_params, drop_threshold=0,session_filter=['Familiar','Novel 1','Novel >1'],equipment_filter="all",cell_filter='all',area_filter=['VISp','VISl'],depth_filter=[0,1000]): 
     '''
@@ -4601,7 +4585,7 @@ def plot_dropout_summary_population(results, run_params,
     ax.legend(h,mylabels,loc='upper right',fontsize=16)
 
     ax.set_ylabel('Coding Score',fontsize=20)
-    set_xlabel('Withheld component ({})'.format(run_params['version']),fontsize=20)
+    ax.set_xlabel('Withheld component ({})'.format(run_params['version']),fontsize=20)
     ax.set_xticks([0,1,2,3])
     ax.set_xticklabels(['images','omissions','behavioral','task'])
     ax.tick_params(axis='x',labelsize=16)
