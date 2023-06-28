@@ -2036,7 +2036,7 @@ def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, dr
     filename = os.path.join(run_params['fig_kernels_dir'],kernel+'_comparison_by_'+'_and_'.join(compare)+filter_string+'.svg')
 
     # Set up time vectors.
-    if kernel in ['preferred_image', 'all-images']:
+    if kernel in ['preferred_image', 'all-images','shared_image','non_shared_image','shared_image_corrected','non_shared_image_corrected']:
         run_params['kernels'][kernel] = run_params['kernels']['image0'].copy()
     if kernel == 'all-omissions':
         run_params['kernels'][kernel] = run_params['kernels']['omissions'].copy()
@@ -2143,6 +2143,7 @@ def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, dr
         'Novel':'Novel',
         'Novel >1':'Novel +'
         }
+    outputs['time_vec']=time_vec
     for dex,group in enumerate(groups):
 
         # Build color, linestyle, and query string for this group
@@ -2247,6 +2248,16 @@ def plot_kernel_comparison_inner(ax, df,label,color,linestyle,time_vec, plot_err
         ax.fill_between(time_vec, df_norm.mean(axis=0)-df_norm.std(axis=0)/np.sqrt(df_norm.shape[0]), df_norm.mean(axis=0)+df_norm.std(axis=0)/np.sqrt(df_norm.shape[0]),facecolor=color, alpha=alpha)   
     ax.plot(time_vec, df_norm.mean(axis=0),linestyle=linestyle,label=label,color=color,linewidth=linewidth)
     return df_norm.mean(axis=0)
+
+def plot_kernel_comparison_shared_images(weights_df,run_params):
+    colors = project_colors()
+    noutputs,nfig,nax = plot_kernel_comparison(weights_df,run_params,'non_shared_image')
+    soutputs,sfig,sax = plot_kernel_comparison(weights_df,run_params,'shared_image')
+    sax.plot(noutputs['time_vec'],noutputs['Novel'],':',color=colors['Novel'],\
+        label='Novel Non-shared',linewidth=4)
+    sax.plot(noutputs['time_vec'],noutputs['Familiar'],':',color=colors['Familiar'],\
+        label='Familiar Non-Shared',linewidth=4)
+    sax.legend(loc='upper left',bbox_to_anchor=(1.05,1),handlelength=4)
 
 def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_threshold=0,session_filter=['Familiar','Novel'],area_filter=['VISp','VISl'],depth_filter=[0,1000],filter_sessions_on='experience_level',plot_dropout_sorted=True):  
     '''

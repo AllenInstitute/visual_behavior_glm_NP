@@ -69,6 +69,9 @@ if False:
     gvt.plot_kernel_comparison(weights_df, run_params, 'licks') 
     gvt.plot_kernel_comparison(weights_df, run_params, 'running') 
     gvt.plot_kernel_comparison(weights_df, run_params, 'pupil') 
+    gvt.plot_kernel_comparison(weights_df, run_params, 'shared_image')
+    gvt.plot_kernel_comparison(weights_df, run_params, 'non_shared_image')
+    gvt.plot_kernel_comparison_shared_images(weights_df,run_params)
 
 def get_analysis_dfs(version):
     run_params = glm_params.load_run_json(version)
