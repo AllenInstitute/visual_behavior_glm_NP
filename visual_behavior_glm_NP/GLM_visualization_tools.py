@@ -2182,10 +2182,10 @@ def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, dr
             session_title = mapper[session_filter[0]]
  
         #plt.title(run_params['version']+'\n'+kernel+' '+cell_filter+' '+session_title)
-        plt.title(kernel+' kernels, '+session_title,fontsize=fs1)
+        plt.title(kernel+' kernels ({})'.format(run_params['version'])+session_title,fontsize=fs1)
     ax.axhline(0, color='k',linestyle='--',alpha=0.25)
     #ax.axvline(0, color='k',linestyle='--',alpha=0.25)
-    ax.set_ylabel('Kernel Weights',fontsize=fs1)      
+    ax.set_ylabel('Kernel Weights (spikes/s)',fontsize=fs1)      
     if kernel == 'omissions':
         ax.set_xlabel('Time from omission (s)',fontsize=fs1)
     elif kernel in ['hits','misses']:
@@ -2541,7 +2541,7 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         #ax[0,2].axhline(np.shape(vip)[1] + np.shape(sst)[1],color='k',linewidth='1')
         #ax[0,2].set_yticks([np.shape(vip)[1]/2,np.shape(vip)[1]+np.shape(sst)[1]/2, np.shape(vip)[1]+np.shape(sst)[1]+np.shape(slc)[1]/2])
         #ax[0,2].set_yticklabels(['Vip','Sst','Exc'])
-        ax[0,2].set_title(kernel)
+        ax[0,2].set_title(run_params['version'])
         ncells={
             'exc':np.shape(slc)[1],
             }
@@ -4477,7 +4477,7 @@ def plot_dropout_summary_by_area(results, run_params,dropout='all-images',
 
     dropout = dropouts_to_show[0]
     ax.set_ylabel('{}\nCoding Score'.format(dropout),fontsize=20)
-    ax.set_xlabel('Structure',fontsize=20)
+    ax.set_xlabel('Structure ({})'.format(run_params['version']),fontsize=20)
     ax.tick_params(axis='x',labelsize=12,rotation=90)
     ax.tick_params(axis='y',labelsize=16)
     ax.spines['top'].set_visible(False)
@@ -4601,7 +4601,7 @@ def plot_dropout_summary_population(results, run_params,
     ax.legend(h,mylabels,loc='upper right',fontsize=16)
 
     ax.set_ylabel('Coding Score',fontsize=20)
-    ax.set_xlabel('Withheld component',fontsize=20)
+    set_xlabel('Withheld component ({})'.format(run_params['version']),fontsize=20)
     ax.set_xticks([0,1,2,3])
     ax.set_xticklabels(['images','omissions','behavioral','task'])
     ax.tick_params(axis='x',labelsize=16)
