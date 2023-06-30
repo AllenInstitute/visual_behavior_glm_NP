@@ -2229,23 +2229,43 @@ def plot_kernel_comparison_shared_images(weights_df,run_params):
         label='Familiar Non-Shared',linewidth=4)
     sax.legend(loc='upper left',bbox_to_anchor=(1.05,1),handlelength=4)
 
+
 def get_time_vec(kernel, run_params):
-    time_vec = np.arange(run_params['kernels'][kernel]['offset'], run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],run_params['spike_bin_width'])+run_params['spike_bin_width']/2
-    time_vec = np.round(time_vec,3) 
-    if 'image' in kernel:
-        time_vec = time_vec[:-1]
-    if ('omissions' == kernel) & ('post-omissions' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('hits' == kernel) & ('post-hits' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('misses' == kernel) & ('post-misses' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('passive_change' == kernel) & ('post-passive_change' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-  
+    if kernel in ['running','licks','pupil','omissions','hits']:
+        time_vec = np.arange(run_params['kernels'][kernel]['offset'], 
+            run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],
+            run_params['spike_bin_width'])
+        time_vec = np.round(time_vec,3) 
+        if 'image' in kernel:
+            time_vec = time_vec[:-1]
+        if ('omissions' == kernel) & ('post-omissions' in run_params['kernels']):
+            time_vec = time_vec[:-1]
+        if ('hits' == kernel) & ('post-hits' in run_params['kernels']):
+            time_vec = time_vec[:-1]
+        if ('misses' == kernel) & ('post-misses' in run_params['kernels']):
+            time_vec = time_vec[:-1]
+        if ('passive_change' == kernel) & ('post-passive_change' in run_params['kernels']):
+            time_vec = time_vec[:-1]
+    else:
+        time_vec = np.arange(run_params['kernels'][kernel]['offset'],
+            run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length']-
+            run_params['spike_bin_width'], run_params['spike_bin_width'])
+
+    if kernel in ['hits','misses','omissions','passive_change']:   
+        timesteps_per_stimulus = int(.75/run_params['spike_bin_width'] - 1)
+        i = 1
+        while i*timesteps_per_stimulus < len(time_vec):
+            time_vec[i*timesteps_per_stimulus:] = \
+                time_vec[i*timesteps_per_stimulus:]+run_params['spike_bin_width']      
+            i+=1
+
+    time_vec = time_vec + run_params['spike_bin_width']/2 
     return time_vec
 
-def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_threshold=0,session_filter=['Familiar','Novel'],area_filter=[],depth_filter=[0,1000],filter_sessions_on='experience_level',plot_dropout_sorted=True):  
+
+def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_threshold=0,
+    session_filter=['Familiar','Novel'],area_filter=[],depth_filter=[0,1000],
+    filter_sessions_on='experience_level',plot_dropout_sorted=True):  
     '''
         Plots the average kernel for each cell line. 
         Plots the heatmap of the kernels sorted by time. 
