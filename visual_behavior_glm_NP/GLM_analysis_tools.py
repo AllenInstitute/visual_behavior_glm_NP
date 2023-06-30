@@ -829,12 +829,14 @@ def process_session_to_df(oeid, run_params):
     session_df['ecephys_session_id'] = [int(oeid)]*len(W.unit_id.values)  
     
     # For each kernel, extract the weights for this kernel
+    scale = 1/run_params['spike_bin_width']
     for k in run_params['kernels']:
         weight_names = [w for w in W.weights.values if w.startswith(k)]
         
         # Check if this kernel was in this model
         if len(weight_names) > 0:
             session_df[k] = W.loc[dict(weights=weight_names)].values.T.tolist()
+            session_df[k] = [list(np.array(x)*scale) for x in session_df[k].values]
     return session_df
 
 
@@ -912,8 +914,55 @@ def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=
         x['image7_weights']
         ]),axis=1) 
 
+    # compute share_image kernel
+    weights_df['shared_image_weights'] = weights_df.apply(lambda x: compute_shared_image_kernel(
+        x['image_set'],
+        [x['image0_weights'],
+        x['image1_weights'],
+        x['image2_weights'],
+        x['image3_weights'],       
+        x['image4_weights'],
+        x['image5_weights'],
+        x['image6_weights'],
+        x['image7_weights']
+        ]),axis=1)
+    weights_df['non_shared_image_weights'] = weights_df.apply(lambda x: \
+        compute_non_shared_image_kernel(
+        x['image_set'],
+        [x['image0_weights'],
+        x['image1_weights'],
+        x['image2_weights'],
+        x['image3_weights'],       
+        x['image4_weights'],
+        x['image5_weights'],
+        x['image6_weights'],
+        x['image7_weights']
+        ]),axis=1)
+
     # Return weights_df
     return weights_df 
+
+def compute_shared_image_kernel(image_set,images):
+    G = np.sort(['im036_r','im012_r','im115_r','im083_r','im111_r','im078_r','im044_r','im047_r'])
+    H = np.sort(['im083_r','im111_r','im104_r','im114_r','im024_r','im034_r','im087_r','im005_r'])
+    if image_set =='G':
+        # index 5,6
+        images = [images[5],images[6]]
+    elif image_set =='H':
+        # index, 3,6
+        images = [images[3],images[6]]
+    return np.mean(images,axis=0)
+
+def compute_non_shared_image_kernel(image_set, images):
+    G = np.sort(['im036_r','im012_r','im115_r','im083_r','im111_r','im078_r','im044_r','im047_r'])
+    H = np.sort(['im083_r','im111_r','im104_r','im114_r','im024_r','im034_r','im087_r','im005_r'])
+    if image_set =='G':
+        # index 5,6
+        images = images[0:5]+images[7:]
+    elif image_set =='H':
+        # index, 3,6
+        images = images[0:3]+images[4:6]+images[7:]
+    return np.mean(images,axis=0)
 
 
 def kernel_excitation(kernel):

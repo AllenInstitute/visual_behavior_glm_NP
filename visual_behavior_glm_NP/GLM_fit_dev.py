@@ -50,18 +50,16 @@ if False:
   
     # Get boxplot of coding scores by experience 
     stats = gvt.plot_dropout_summary_population(results, run_params) 
-    stats = gvt.plot_dropout_summary_by_area(results, run_params, 
-        'all-images')
-    stats = gvt.plot_dropout_summary_by_area(results, run_params, 
-        'omissions')
-    stats = gvt.plot_dropout_summary_by_area(results, run_params, 
-        'behavioral')
-    stats = gvt.plot_dropout_summary_by_area(results, run_params, 
-        'task')
+    stats = gvt.plot_dropout_summary_by_area(results, run_params, 'all-images')
+    stats = gvt.plot_dropout_summary_by_area(results, run_params, 'omissions')
+    stats = gvt.plot_dropout_summary_by_area(results, run_params, 'behavioral')
+    stats = gvt.plot_dropout_summary_by_area(results, run_params, 'task')
     
     # Kernel plots
     gvt.kernel_evaluation(weights_df, run_params, 'omissions',
         session_filter=['Familiar'])
+    gvt.kernel_evaluation(weights_df, run_params, 'omissions',
+        area_filter=['CA1'])
     gvt.plot_kernel_comparison(weights_df, run_params, 'omissions') 
     gvt.plot_kernel_comparison(weights_df, run_params, 'all-images') 
     gvt.plot_kernel_comparison(weights_df, run_params, 'hits') 
@@ -70,6 +68,11 @@ if False:
     gvt.plot_kernel_comparison(weights_df, run_params, 'running') 
     gvt.plot_kernel_comparison(weights_df, run_params, 'pupil') 
 
+    # Shared/Non Shared images
+    gvt.plot_kernel_comparison(weights_df, run_params, 'shared_image')
+    gvt.plot_kernel_comparison(weights_df, run_params, 'non_shared_image')
+    gvt.plot_kernel_comparison_shared_images(weights_df,run_params)
+
 def get_analysis_dfs(version):
     run_params = glm_params.load_run_json(version)
     results = gat.get_summary_results(version)
@@ -77,4 +80,35 @@ def get_analysis_dfs(version):
     weights_df = gat.get_weights_df(version, results_pivoted)
     return run_params, results, results_pivoted, weights_df
 
+def figure_dump(version, run_params, results, results_pivoted, weights_df):
+    stats = gvt.var_explained_by_experience(results_pivoted, run_params,savefig=True)
+    stats = gvt.plot_dropout_summary_population(results, run_params,savefig=True)
+    dropouts = ['all-images','omissions','behavioral','pupil','running','licks','task','hits','misses']
+    for d in dropouts:
+        stats = gvt.plot_dropout_summary_by_area(results, run_params,d,savefig=True)
+    closeall()
 
+    kernels = ['omissions','all-images','hits','misses','licks','running','pupil',
+        'shared_image','non_shared_image']
+    areas = weights_df['structure_acronym'].unique()
+    for k in kernels:
+        gvt.plot_kernel_comparison(weights_df, run_params, k)
+        for a in areas:
+            try:
+                gvt.plot_kernel_comparison(weights_df, run_params, k,area_filter=[a])
+            except:
+                pass
+            closeall()
+
+    for k in kernels:
+        for a in areas:
+            try:
+                gvt.kernel_evaluation(weights_df, run_params, k,session_filter=['Familiar'], area_filter=[a],save_results=True)
+                gvt.kernel_evaluation(weights_df, run_params, k,session_filter=['Novel'], area_filter=[a],save_results=True)
+            except:
+                pass
+            closeall()
+
+
+
+ 

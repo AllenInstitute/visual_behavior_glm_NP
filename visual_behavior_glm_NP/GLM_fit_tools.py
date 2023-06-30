@@ -54,6 +54,11 @@ def load_fit_experiment(ecephys_session_id, run_params):
     for k in kernels_to_limit_per_image_cycle:
         if k in run_params['kernels']:
             run_params['kernels'][k]['num_weights'] = fit['timesteps_per_stimulus']    
+    kernels_with_image_cycles = ['hits','misses','passive_change','omissions']
+    for k in kernels_with_image_cycles:
+        if k in run_params['kernels']:
+            num_cycles = int(np.floor(run_params['kernels'][k]['length']/.75))
+            run_params['kernels'][k]['num_weights'] = int(fit['timesteps_per_stimulus']*num_cycles)
 
     design = DesignMatrix(fit)
     design = add_kernels(design, run_params, session,fit)
@@ -1080,6 +1085,11 @@ def establish_ephys_timebins(fit, session, run_params):
     for k in kernels_to_limit_per_image_cycle:
         if k in run_params['kernels']:
             run_params['kernels'][k]['num_weights'] = fit['timesteps_per_stimulus']    
+    kernels_with_image_cycles = ['hits','misses','passive_change','omissions']
+    for k in kernels_with_image_cycles:
+        if k in run_params['kernels']:
+            num_cycles = int(np.floor(run_params['kernels'][k]['length']/.75))
+            run_params['kernels'][k]['num_weights'] = int(fit['timesteps_per_stimulus']*num_cycles)
 
     return fit
 

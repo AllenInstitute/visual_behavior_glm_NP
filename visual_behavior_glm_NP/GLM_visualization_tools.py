@@ -634,7 +634,8 @@ def var_explained_matched(results_pivoted, run_params):
  
  
 
-def var_explained_by_experience(results_pivoted, run_params,threshold = 0,savefig=False):
+def var_explained_by_experience(results_pivoted, run_params,threshold = 0,savefig=False,
+    sort_order='variance'):
     
     if threshold != 0:
         results_pivoted = results_pivoted.query('(variance_explained_full > @threshold)').copy()
@@ -644,7 +645,10 @@ def var_explained_by_experience(results_pivoted, run_params,threshold = 0,savefi
     colors = project_colors()
     results_pivoted['variance_explained_percent'] = results_pivoted['variance_explained_full']*100
     plt.figure(figsize=(12,5))
-    area_order = get_area_order(results_pivoted)
+    if sort_order =='alphabetical':
+        area_order = get_area_order(results_pivoted)
+    elif sort_order=='variance':
+        area_order = results_pivoted.groupby('structure_acronym')['variance_explained_percent'].mean().sort_values().index.values
     ax = sns.boxplot(
         x='structure_acronym',
         hue='experience_level',
@@ -664,6 +668,11 @@ def var_explained_by_experience(results_pivoted, run_params,threshold = 0,savefi
     plt.ylim(0,30)
     plt.tick_params(axis='both',labelsize=12)
     plt.tick_params(axis='x',rotation=90)
+    h,labels =ax.get_legend_handles_labels()
+
+    mylabels = labels 
+    ax.legend(h,mylabels,loc='upper left',fontsize=16)
+
     plt.tight_layout() 
     if savefig:
         if threshold !=0:
@@ -1690,8 +1699,7 @@ def plot_compare_across_kernels(weights_df, run_params, kernels,session_filter=[
     weights = weights_df.query('(targeted_structure in @area_filter)& (cre_line in @cell_list)&(equipment_name in @equipment_list)&(session_number in @session_filter) & (ophys_session_id not in @problem_sessions) & (variance_explained_full > @threshold)').copy()
 
     # Set up time vectors.
-    time_vec = np.arange(run_params['kernels'][kernels[0]]['offset'], run_params['kernels'][kernels[0]]['offset'] + run_params['kernels'][kernels[0]]['length'],1/31)
-    time_vec = np.round(time_vec,2)
+    time_vec = get_time_vec(kernel, run_params)
 
     # Plotting settings
     fig,ax=plt.subplots(figsize=(8,4))
@@ -1810,8 +1818,8 @@ def plot_perturbation(weights_df, run_params, kernel, drop_threshold=0,session_f
     weights = weights_df.query('(targeted_structure in @area_filter)& (cre_line in @cell_list)&(equipment_name in @equipment_list)&(session_number in @session_filter) & (ophys_session_id not in @problem_sessions) & (imaging_depth < @depth_filter[1]) & (imaging_depth > @depth_filter[0])& (variance_explained_full > @threshold) & ({0} < @drop_threshold)'.format(kernel))
 
     # Set up time vectors.
-    time_vec = np.arange(run_params['kernels'][kernel]['offset'], run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],1/31)
-    time_vec = np.round(time_vec,2)
+
+    time_vec = get_time_vec(kernel,run_params)
     meso_time_vec = np.arange(run_params['kernels'][kernel]['offset'], run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],1/11)#1/10.725)
     groups = list(weights.groupby(['cre_line']).groups.keys())
     
@@ -1964,7 +1972,7 @@ def plot_kernel_comparison_by_kernel_excitation(weights_df, run_params,kernel,sa
     plot_kernel_comparison(weights_df,run_params,kernel,session_filter=['Novel 1'],cell_filter='Vip-IRES-Cre',compare=[kernel+'_excited'], set_title='Vip Inhibitory, Novel 1, '+nk,save_results=savefig)
     plot_kernel_comparison(weights_df,run_params,kernel,session_filter=['Novel >1'],cell_filter='Vip-IRES-Cre',compare=[kernel+'_excited'],set_title='Vip Inhibitory, Novel >1, '+nk,save_results=savefig)
 
-def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, drop_threshold=0,session_filter=['Familiar','Novel 1','Novel >1'],equipment_filter="all",depth_filter=[0,1000],cell_filter="all",area_filter=['VISp','VISl'],compare=['experience_level'],plot_errors=False,save_kernels=False,fig=None, ax=None,fs1=20,fs2=16,show_legend=True,filter_sessions_on='experience_level',image_set=['familiar','novel'],threshold=0,set_title=None): 
+def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, drop_threshold=0,session_filter=['Familiar','Novel 1','Novel >1'],equipment_filter="all",depth_filter=[0,1000],cell_filter="all",area_filter=[],compare=['experience_level'],plot_errors=False,save_kernels=False,fig=None, ax=None,fs1=20,fs2=16,show_legend=True,filter_sessions_on='experience_level',image_set=['familiar','novel'],threshold=0,set_title=None): 
     '''
         Plots the average kernel across different comparisons groups of cells
         First applies hard filters, then compares across remaining cells
@@ -1996,38 +2004,20 @@ def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, dr
     #    threshold = 0.005
     #threshold = 0
  
-    # Filter by Equipment
-    equipment_list = ["CAM2P.3","CAM2P.4","CAM2P.5","MESO.1"]
-    if equipment_filter == "scientifica": 
-        equipment_list = ["CAM2P.3","CAM2P.4","CAM2P.5"]
-        filter_string += '_scientifica'
-    elif equipment_filter == "mesoscope":
-        equipment_list = ["MESO.1"]
-        filter_string += '_mesoscope'
-    
-    # Filter by Cell Type    
-    cell_list = ['Sst-IRES-Cre','Slc17a7-IRES2-Cre','Vip-IRES-Cre']     
-    if (cell_filter == "sst") or (cell_filter == "Sst-IRES-Cre"):
-        cell_list = ['Sst-IRES-Cre']
-        filter_string += '_sst'
-    elif (cell_filter == "vip") or (cell_filter == "Vip-IRES-Cre"):
-        cell_list = ['Vip-IRES-Cre']
-        filter_string += '_vip'
-    elif (cell_filter == "slc") or (cell_filter == "Slc17a7-IRES2-Cre"):
-        cell_list = ['Slc17a7-IRES2-Cre']
-        filter_string += '_slc'
 
     # Determine filename
-    if session_filter != [1,2,3,4,5,6]:
-        filter_string+= '_sessions_'+'_'.join([str(x) for x in session_filter])   
-    if depth_filter !=[0,1000]:
-        filter_string+='_depth_'+str(depth_filter[0])+'_'+str(depth_filter[1])
-    if area_filter != ['VISp','VISl']:
+
+    if len(area_filter) == 0:
+        area_filter = weights_df['structure_acronym'].unique()
+        input_area_filter=[]
+    else:
+        input_area_filter = area_filter
         filter_string+='_area_'+'_'.join(area_filter)
-    filename = os.path.join(run_params['fig_kernels_dir'],kernel+'_comparison_by_'+'_and_'.join(compare)+filter_string+'.svg')
+
+    filename = os.path.join(run_params['fig_kernels_dir'],kernel+'_comparison_by_experience'+filter_string+'.png')
 
     # Set up time vectors.
-    if kernel in ['preferred_image', 'all-images']:
+    if kernel in ['preferred_image', 'all-images','shared_image','non_shared_image','shared_image_corrected','non_shared_image_corrected']:
         run_params['kernels'][kernel] = run_params['kernels']['image0'].copy()
     if kernel == 'all-omissions':
         run_params['kernels'][kernel] = run_params['kernels']['omissions'].copy()
@@ -2043,19 +2033,8 @@ def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, dr
         run_params['kernels'][kernel]['length'] = run_params['kernels']['passive_change']['length'] + run_params['kernels']['post-passive_change']['length']   
     if kernel == 'task':
         run_params['kernels'][kernel] = run_params['kernels']['hits'].copy()   
-    time_vec = np.arange(run_params['kernels'][kernel]['offset'], run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],run_params['spike_bin_width'])
-    time_vec = np.round(time_vec,2) 
-    if 'image' in kernel:
-        time_vec = time_vec[:-1]
-    if ('omissions' == kernel) & ('post-omissions' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('hits' == kernel) & ('post-hits' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('misses' == kernel) & ('post-misses' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('passive_change' == kernel) & ('post-passive_change' in run_params['kernels']):
-        time_vec = time_vec[:-1]
- 
+    time_vec = get_time_vec(kernel, run_params)
+
     if '-' in kernel:
         weights_df= weights_df.rename(columns={
             'all-omissions':'all_omissions',
@@ -2084,10 +2063,10 @@ def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, dr
 
     # Applying hard thresholds to dataset
     if kernel in weights_df:
-        weights = weights_df.query('(variance_explained_full > @threshold) & ({1} <= @drop_threshold)'.format(filter_sessions_on, kernel))
+        weights = weights_df.query('(structure_acronym in @area_filter)&(variance_explained_full > @threshold) & ({1} <= @drop_threshold)'.format(filter_sessions_on, kernel))
         use_dropouts=True
     else:
-        weights = weights_df.query('(variance_explained_full > @threshold)'.format(filter_sessions_on))
+        weights = weights_df.query('(structure_acronym in @area_filter)&(variance_explained_full > @threshold)'.format(filter_sessions_on))
         print('Dropouts not included, cannot use drop filter')
         use_dropouts=False
 
@@ -2134,6 +2113,7 @@ def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, dr
         'Novel':'Novel',
         'Novel >1':'Novel +'
         }
+    outputs['time_vec']=time_vec
     for dex,group in enumerate(groups):
 
         # Build color, linestyle, and query string for this group
@@ -2172,10 +2152,10 @@ def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, dr
             session_title = mapper[session_filter[0]]
  
         #plt.title(run_params['version']+'\n'+kernel+' '+cell_filter+' '+session_title)
-        plt.title(kernel+' kernels, '+session_title,fontsize=fs1)
+        plt.title(kernel+' ({})'.format(' '.join(input_area_filter))+session_title,fontsize=fs1)
     ax.axhline(0, color='k',linestyle='--',alpha=0.25)
     #ax.axvline(0, color='k',linestyle='--',alpha=0.25)
-    ax.set_ylabel('Kernel Weights',fontsize=fs1)      
+    ax.set_ylabel('Kernel Weights (spikes/s)',fontsize=fs1)      
     if kernel == 'omissions':
         ax.set_xlabel('Time from omission (s)',fontsize=fs1)
     elif kernel in ['hits','misses']:
@@ -2239,7 +2219,53 @@ def plot_kernel_comparison_inner(ax, df,label,color,linestyle,time_vec, plot_err
     ax.plot(time_vec, df_norm.mean(axis=0),linestyle=linestyle,label=label,color=color,linewidth=linewidth)
     return df_norm.mean(axis=0)
 
-def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_threshold=0,session_filter=['Familiar','Novel'],area_filter=['VISp','VISl'],depth_filter=[0,1000],filter_sessions_on='experience_level',plot_dropout_sorted=True):  
+def plot_kernel_comparison_shared_images(weights_df,run_params):
+    colors = project_colors()
+    noutputs,nfig,nax = plot_kernel_comparison(weights_df,run_params,'non_shared_image')
+    soutputs,sfig,sax = plot_kernel_comparison(weights_df,run_params,'shared_image')
+    sax.plot(noutputs['time_vec'],noutputs['Novel'],':',color=colors['Novel'],\
+        label='Novel Non-shared',linewidth=4)
+    sax.plot(noutputs['time_vec'],noutputs['Familiar'],':',color=colors['Familiar'],\
+        label='Familiar Non-Shared',linewidth=4)
+    sax.legend(loc='upper left',bbox_to_anchor=(1.05,1),handlelength=4)
+
+
+def get_time_vec(kernel, run_params):
+    if kernel in ['running','licks','pupil','omissions','hits']:
+        time_vec = np.arange(run_params['kernels'][kernel]['offset'], 
+            run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],
+            run_params['spike_bin_width'])
+        time_vec = np.round(time_vec,3) 
+        if 'image' in kernel:
+            time_vec = time_vec[:-1]
+        if ('omissions' == kernel) & ('post-omissions' in run_params['kernels']):
+            time_vec = time_vec[:-1]
+        if ('hits' == kernel) & ('post-hits' in run_params['kernels']):
+            time_vec = time_vec[:-1]
+        if ('misses' == kernel) & ('post-misses' in run_params['kernels']):
+            time_vec = time_vec[:-1]
+        if ('passive_change' == kernel) & ('post-passive_change' in run_params['kernels']):
+            time_vec = time_vec[:-1]
+    else:
+        time_vec = np.arange(run_params['kernels'][kernel]['offset'],
+            run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length']-
+            run_params['spike_bin_width'], run_params['spike_bin_width'])
+
+    if kernel in ['hits','misses','omissions','passive_change']:   
+        timesteps_per_stimulus = int(.75/run_params['spike_bin_width'] - 1)
+        i = 1
+        while i*timesteps_per_stimulus < len(time_vec):
+            time_vec[i*timesteps_per_stimulus:] = \
+                time_vec[i*timesteps_per_stimulus:]+run_params['spike_bin_width']      
+            i+=1
+
+    time_vec = time_vec + run_params['spike_bin_width']/2 
+    return time_vec
+
+
+def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_threshold=0,
+    session_filter=['Familiar','Novel'],area_filter=[],depth_filter=[0,1000],
+    filter_sessions_on='experience_level',plot_dropout_sorted=True):  
     '''
         Plots the average kernel for each cell line. 
         Plots the heatmap of the kernels sorted by time. 
@@ -2270,8 +2296,13 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         filter_string+= '_sessions_'+'_'.join([str(x) for x in session_filter])   
     if depth_filter !=[0,1000]:
         filter_string+='_depth_'+str(depth_filter[0])+'_'+str(depth_filter[1])
-    if area_filter != ['VISp','VISl']:
+    if len(area_filter) == 0:
+        area_str = 'all'
+        area_filter = weights_df['structure_acronym'].unique()
+    else:
+        area_str = ' '.join(area_filter)
         filter_string+='_area_'+'_'.join(area_filter)
+        
     filename = os.path.join(run_params['fig_kernels_dir'],kernel+'_evaluation_'+filter_string+'.png')
     filename_svg = os.path.join(run_params['fig_kernels_dir'],kernel+'_evaluation_'+filter_string+'.svg')
     problem_sessions = get_problem_sessions()
@@ -2283,7 +2314,7 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         threshold = 0.005
 
     # Set up time vectors.
-    if kernel in ['preferred_image', 'all-images']:
+    if kernel in ['preferred_image', 'all-images','shared_image','non_shared_image']:
         run_params['kernels'][kernel] = run_params['kernels']['image0'].copy()
     if kernel == 'all-omissions':
         run_params['kernels'][kernel] = run_params['kernels']['omissions'].copy()
@@ -2299,18 +2330,7 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         run_params['kernels'][kernel]['length'] = run_params['kernels']['passive_change']['length'] + run_params['kernels']['post-passive_change']['length']   
     if kernel == 'task':
         run_params['kernels'][kernel] = run_params['kernels']['hits'].copy()   
-    time_vec = np.arange(run_params['kernels'][kernel]['offset'], run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],run_params['spike_bin_width'])
-    time_vec = np.round(time_vec,2)
-    if 'image' in kernel:
-        time_vec = time_vec[:-1]
-    if ('omissions' == kernel) & ('post-omissions' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('hits' == kernel) & ('post-hits' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('misses' == kernel) & ('post-misses' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('passive_change' == kernel) & ('post-passive_change' in run_params['kernels']):
-        time_vec = time_vec[:-1]
+    time_vec = get_time_vec(kernel, run_params)
 
     # Make dropout list
     drop_list = [d for d in run_params['dropouts'].keys() if (
@@ -2354,12 +2374,14 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
     # don't apply overall VE, or dropout threshold limits here, since we look at the effects of those criteria below. 
     # we do remove NaN dropouts here
     if kernel in weights_df:
-        weights = weights_df.query('(variance_explained_full > 0) & ({1} <= 0)'.format(filter_sessions_on, kernel))
+        weights = weights_df.query('({0} in @session_filter)&(structure_acronym in @area_filter)&(variance_explained_full > 0) & ({1} <= 0)'.format(filter_sessions_on, kernel))
         use_dropouts=True
     else:
-        weights = weights_df.query('(variance_explained_full > 0)'.format(filter_sessions_on)) 
+        weights = weights_df.query('({0} in @session_filter)&(structure_acronym in @area_filter)&(variance_explained_full > 0)'.format(filter_sessions_on)) 
         print('Dropouts not included, cannot use drop filter')
         use_dropouts=False
+        plot_dropout_sorted=False
+        
 
     # Have to do a manual filtering step here because weird things happen when combining
     # two kernels
@@ -2389,12 +2411,12 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         slc[:] = np.nan
 
     # Plot
-    ax[0,0].plot(time_vec, slc.mean(axis=0),label='SLC (n='+str(n_slc)+')',color=colors['slc'],linewidth=2)
+    ax[0,0].plot(time_vec, slc.mean(axis=0),label='n='+str(n_slc),color=colors['slc'],linewidth=2)
     ax[0,0].axhline(0, color='k',linestyle='--',alpha=line_alpha)
-    ax[0,0].set_ylabel('Weights (df/f)')
+    ax[0,0].set_ylabel('Weights (spikes/sec)')
     ax[0,0].set_xlabel('Time (s)')
     ax[0,0].legend()
-    ax[0,0].set_title('Average kernel')
+    ax[0,0].set_title(area_str+' '+'_'.join(session_filter))
     ax[0,0].set_xlim(time_vec[0]-0.05,time_vec[-1])   
     add_stimulus_bars(ax[0,0],kernel)
     slc = slc.T
@@ -2409,9 +2431,9 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
     else:
         slc_f = np.empty((2,len(time_vec)))
         slc_f[:] = np.nan
-    ax[1,0].plot(time_vec, slc_f.mean(axis=0),label='SLC (n='+str(n_slc)+')',color=colors['slc'],linewidth=2)
+    ax[1,0].plot(time_vec, slc_f.mean(axis=0),label='n='+str(n_slc),color=colors['slc'],linewidth=2)
     ax[1,0].axhline(0, color='k',linestyle='--',alpha=line_alpha)
-    ax[1,0].set_ylabel('Weights (df/f)')
+    ax[1,0].set_ylabel('Weights (spikes/sec)')
     ax[1,0].set_xlabel('Time (s)')
     ax[1,0].legend()
     ax[1,0].set_title('Filtered on Full Model VE > '+str(threshold))
@@ -2433,9 +2455,9 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
             slc_df = np.empty((2,len(time_vec)))
             slc_df[:] = np.nan
     
-        ax[2,0].plot(time_vec, slc_df.mean(axis=0),label='SLC (n='+str(n_slc)+')',color=colors['slc'],linewidth=2)
+        ax[2,0].plot(time_vec, slc_df.mean(axis=0),label='n='+str(n_slc),color=colors['slc'],linewidth=2)
         ax[2,0].axhline(0, color='k',linestyle='--',alpha=line_alpha)
-        ax[2,0].set_ylabel('Weights (df/f)')
+        ax[2,0].set_ylabel('Weights (spikes/sec)')
         ax[2,0].set_xlabel('Time (s)')
         ax[2,0].legend()
         ax[2,0].set_title('Filtered on Dropout Score < '+str(drop_threshold))
@@ -2516,7 +2538,7 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         #ax[0,2].axhline(np.shape(vip)[1] + np.shape(sst)[1],color='k',linewidth='1')
         #ax[0,2].set_yticks([np.shape(vip)[1]/2,np.shape(vip)[1]+np.shape(sst)[1]/2, np.shape(vip)[1]+np.shape(sst)[1]+np.shape(slc)[1]/2])
         #ax[0,2].set_yticklabels(['Vip','Sst','Exc'])
-        ax[0,2].set_title(kernel)
+        ax[0,2].set_title(run_params['version'])
         ncells={
             'exc':np.shape(slc)[1],
             }
@@ -2653,7 +2675,7 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
     if save_results:
         print('Figure Saved to: '+filename)
         plt.savefig(filename) 
-        plt.savefig(filename_svg)
+        #plt.savefig(filename_svg)
 
 def all_kernels_evaluation(weights_df, run_params, drop_threshold=0,session_filter=['Familiar','Novel 1','Novel >1'],equipment_filter="all",cell_filter='all',area_filter=['VISp','VISl'],depth_filter=[0,1000]): 
     '''
@@ -4376,16 +4398,16 @@ def plot_dropout_individual_population(results, run_params,ax=None,palette=None,
     return data_to_plot.groupby(['cre_line','dropout'])['explained_variance'].describe()
 
 def plot_dropout_summary_by_area(results, run_params,dropout='all-images',
-    ax=None,palette=None,use_violin=False,add_median=True,
-    include_zero_cells=True,add_title=False,
+    ax=None,palette=None,add_median=True,include_zero_cells=True,add_title=False,
     dropout_cleaning_threshold=None, exclusion_threshold=None,
-    savefig=False): 
+    savefig=False,sort_order='coding'): 
     '''
-        Makes a bar plot that shows the population dropout summary by cre line for different regressors 
+        Makes a bar plot that shows the population dropout summary by area 
         palette , color palette to use. If None, uses gvt.project_colors()
         use_violion (bool) if true, uses violin, otherwise uses boxplots
         add_median (bool) if true, adds a line at the median of each population
-        include_zero_cells (bool) if true, uses all cells, otherwise uses a threshold for minimum variance explained
+        include_zero_cells (bool) if true, uses all cells, otherwise uses a 
+            threshold for minimum variance explained
     '''
     dropouts_to_show=[dropout]
     if ax is None:
@@ -4406,12 +4428,6 @@ def plot_dropout_summary_by_area(results, run_params,dropout='all-images',
         threshold = 0
     else:
         threshold=exclusion_threshold
-        # if 'dropout_threshold' in run_params:
-        #     threshold = run_params['dropout_threshold']
-        # else:
-        #     threshold = 0.005
-
-    cre_lines = ['Vip-IRES-Cre','Sst-IRES-Cre','Slc17a7-IRES2-Cre']
 
     if ('post-omissions' in results.dropout.unique())&('omissions' in dropouts_to_show):
        dropouts_to_show = ['all-omissions' if x == 'omissions' else x for x in dropouts_to_show]
@@ -4420,67 +4436,45 @@ def plot_dropout_summary_by_area(results, run_params,dropout='all-images',
     if ('post-misses' in results.dropout.unique())&('misses' in dropouts_to_show):
        dropouts_to_show = ['all-misses' if x == 'misses' else x for x in dropouts_to_show]
     if ('post-passive_change' in results.dropout.unique())&('passive_change' in dropouts_to_show):
-       dropouts_to_show = ['all-passive_change' if x == 'passive_change' else x for x in dropouts_to_show]
+       dropouts_to_show = ['all-passive_change' if x == 'passive_change' else x for x \
+            in dropouts_to_show]
  
-    data_to_plot = results.query('dropout in @dropouts_to_show and variance_explained_full > {}'.format(threshold)).copy()
+    data_to_plot = results\
+        .query('dropout in @dropouts_to_show and variance_explained_full > {}'\
+        .format(threshold)).copy()
     data_to_plot['explained_variance'] = -1*data_to_plot['adj_fraction_change_from_full']
     if dropout_cleaning_threshold is not None:
-        print('Clipping dropout scores for cells with full model VE < '+str(dropout_cleaning_threshold))
-        data_to_plot.loc[data_to_plot['adj_variance_explained_full']<dropout_cleaning_threshold,'explained_variance'] = 0 
-   
-    area_order = get_area_order(results) 
-    if use_violin:
-        plot1= sns.violinplot(
-            data = data_to_plot,
-            x='dropout',
-            y='explained_variance',
-            hue='experience_level',
-            order=dropouts_to_show,
-            hue_order=['Familiar','Novel'],
-            fliersize=0,
-            ax=ax,
-            inner='quartile',
-            linewidth=0,
-            palette=palette,
-            cut = 0
-        )
-        if add_median:
-            lines = plot1.get_lines()
-            for index, line in enumerate(lines):
-                if np.mod(index,3) == 0:
-                    line.set_linewidth(0)
-                elif np.mod(index,3) == 1:
-                    line.set_linewidth(1)
-                    line.set_color('r')
-                    line.set_linestyle('-')
-                elif np.mod(index,3) == 2:
-                    line.set_linewidth(0)
-        plt.axhline(0,color='k',alpha=.25)
+        print('Clipping dropout scores for cells with full model VE < '\
+            +str(dropout_cleaning_threshold))
+        data_to_plot.loc[data_to_plot['adj_variance_explained_full']<\
+            dropout_cleaning_threshold,'explained_variance'] = 0 
 
-    else:
-        sns.boxplot(
-            data = data_to_plot,
-            x='structure_acronym',
-            y='explained_variance',
-            hue='experience_level',
-            order=area_order,
-            hue_order=['Familiar','Novel'],
-            fliersize=0,
-            ax=ax,
-            palette=palette,
-            width=.7,
-        )
+    if sort_order =='alphabetical':   
+        area_order = get_area_order(results) 
+    elif sort_order=='coding':
+        area_order =data_to_plot.groupby('structure_acronym')['explained_variance'].mean().sort_values().index.values
+
+    sns.boxplot(
+        data = data_to_plot,
+        x='structure_acronym',
+        y='explained_variance',
+        hue='experience_level',
+        order=area_order,
+        hue_order=['Familiar','Novel'],
+        fliersize=0,
+        ax=ax,
+        palette=palette,
+        width=.7,
+    )
     ax.set_ylim(0,1)
     h,labels =ax.get_legend_handles_labels()
 
     mylabels = labels 
-    ax.legend(h,mylabels,loc='upper right',fontsize=16)
+    ax.legend(h,mylabels,loc='upper left',fontsize=16)
 
     dropout = dropouts_to_show[0]
     ax.set_ylabel('{}\nCoding Score'.format(dropout),fontsize=20)
-    ax.set_xlabel('Structure',fontsize=20)
-    #ax.set_xticks([0,1,2,3])
-    #ax.set_xticklabels(['images','omissions','behavioral','task'])
+    ax.set_xlabel('Structure ({})'.format(run_params['version']),fontsize=20)
     ax.tick_params(axis='x',labelsize=12,rotation=90)
     ax.tick_params(axis='y',labelsize=16)
     ax.spines['top'].set_visible(False)
@@ -4495,14 +4489,10 @@ def plot_dropout_summary_by_area(results, run_params,dropout='all-images',
         extra=''
     extra += '_{}'.format(dropout)
     if savefig:
-        if use_violin:
-            filename = run_params['figure_dir']+'/dropout_summary'+extra+'.svg'
-            plt.savefig(filename)
-        else:
-            filename = run_params['figure_dir']+'/dropout_summary_boxplot'+extra+'.svg'
-            print('Figure saved to: '+filename)
-            plt.savefig(filename)
-            plt.savefig(run_params['figure_dir']+'/dropout_summary_boxplot'+extra+'.png')
+        filename = run_params['figure_dir']+'/dropout_summary_boxplot'+extra+'.svg'
+        print('Figure saved to: '+filename)
+        plt.savefig(filename)
+        plt.savefig(run_params['figure_dir']+'/dropout_summary_boxplot'+extra+'.png')
     return data_to_plot.groupby(['experience_level','dropout'])['explained_variance'].describe() 
 
 
@@ -4608,7 +4598,7 @@ def plot_dropout_summary_population(results, run_params,
     ax.legend(h,mylabels,loc='upper right',fontsize=16)
 
     ax.set_ylabel('Coding Score',fontsize=20)
-    ax.set_xlabel('Withheld component',fontsize=20)
+    ax.set_xlabel('Withheld component ({})'.format(run_params['version']),fontsize=20)
     ax.set_xticks([0,1,2,3])
     ax.set_xticklabels(['images','omissions','behavioral','task'])
     ax.tick_params(axis='x',labelsize=16)
@@ -4809,7 +4799,7 @@ def make_cosyne_summary_figure(glm, cell_specimen_id, t_span,dropout_df,alpha =0
         )
 
 
-    # cell df/f plots:
+    # cell spikes/sec plots:
 
     this_cell = glm.cell_results_df.query('cell_specimen_id == @cell_specimen_id')
     cell_index = np.where(glm.W['cell_specimen_id'] == cell_specimen_id)[0][0]
@@ -5431,7 +5421,7 @@ def compare_events_and_dff(results_pivoted_dff, results_pivoted_events,savefig=F
         cre_slice = joint.query('cre_line_dff ==@cre')
         ax[0].plot(cre_slice['variance_explained_full_dff'],cre_slice['variance_explained_full_events'],'o',alpha=.2,color=project_colors()[cre],label=cre)
     ax[0].set_ylabel('Variance Explained (events)')
-    ax[0].set_xlabel('Variance Explained (df/f)')
+    ax[0].set_xlabel('Variance Explained (spikes/sec)')
     ax[0].plot([0,1],[0,1],'r--',alpha=.5)
     ax[0].set_aspect('equal')
     ax[0].set_xlim(0,1)
@@ -5571,20 +5561,7 @@ def clustering_kernels(weights_df, run_params, kernel,just_coding=False,pca_by_e
 
     if kernel in ['preferred_image', 'all-images']:
         run_params['kernels'][kernel] = run_params['kernels']['image0'].copy()
-    time_vec = np.arange(run_params['kernels'][kernel]['offset'], run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],1/31)
-    time_vec = np.round(time_vec,2)
-    if 'image' in kernel:
-        time_vec = time_vec[:-1]
-    if ('omissions' == kernel) & ('post-omissions' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('hits' == kernel) & ('post-hits' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('misses' == kernel) & ('post-misses' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('passive_change' == kernel) & ('post-passive_change' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-
-
+    time_vec = get_time_vec(kernel, run_params)
 
     cre_lines = ['Vip-IRES-Cre','Sst-IRES-Cre','Slc17a7-IRES2-Cre'] 
 
