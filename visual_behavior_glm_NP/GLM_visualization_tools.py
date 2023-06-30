@@ -1699,8 +1699,7 @@ def plot_compare_across_kernels(weights_df, run_params, kernels,session_filter=[
     weights = weights_df.query('(targeted_structure in @area_filter)& (cre_line in @cell_list)&(equipment_name in @equipment_list)&(session_number in @session_filter) & (ophys_session_id not in @problem_sessions) & (variance_explained_full > @threshold)').copy()
 
     # Set up time vectors.
-    time_vec = np.arange(run_params['kernels'][kernels[0]]['offset'], run_params['kernels'][kernels[0]]['offset'] + run_params['kernels'][kernels[0]]['length'],1/31)
-    time_vec = np.round(time_vec,2)
+    time_vec = get_time_vec(kernel, run_params)
 
     # Plotting settings
     fig,ax=plt.subplots(figsize=(8,4))
@@ -1819,8 +1818,8 @@ def plot_perturbation(weights_df, run_params, kernel, drop_threshold=0,session_f
     weights = weights_df.query('(targeted_structure in @area_filter)& (cre_line in @cell_list)&(equipment_name in @equipment_list)&(session_number in @session_filter) & (ophys_session_id not in @problem_sessions) & (imaging_depth < @depth_filter[1]) & (imaging_depth > @depth_filter[0])& (variance_explained_full > @threshold) & ({0} < @drop_threshold)'.format(kernel))
 
     # Set up time vectors.
-    time_vec = np.arange(run_params['kernels'][kernel]['offset'], run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],1/31)
-    time_vec = np.round(time_vec,2)
+
+    time_vec = get_time_vec(kernel,run_params)
     meso_time_vec = np.arange(run_params['kernels'][kernel]['offset'], run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],1/11)#1/10.725)
     groups = list(weights.groupby(['cre_line']).groups.keys())
     
@@ -2311,18 +2310,7 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         run_params['kernels'][kernel]['length'] = run_params['kernels']['passive_change']['length'] + run_params['kernels']['post-passive_change']['length']   
     if kernel == 'task':
         run_params['kernels'][kernel] = run_params['kernels']['hits'].copy()   
-    time_vec = np.arange(run_params['kernels'][kernel]['offset'], run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],run_params['spike_bin_width'])
-    time_vec = np.round(time_vec,2)
-    if 'image' in kernel:
-        time_vec = time_vec[:-1]
-    if ('omissions' == kernel) & ('post-omissions' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('hits' == kernel) & ('post-hits' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('misses' == kernel) & ('post-misses' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('passive_change' == kernel) & ('post-passive_change' in run_params['kernels']):
-        time_vec = time_vec[:-1]
+    time_vec = get_time_vec(kernel, run_params)
 
     # Make dropout list
     drop_list = [d for d in run_params['dropouts'].keys() if (
@@ -5553,20 +5541,7 @@ def clustering_kernels(weights_df, run_params, kernel,just_coding=False,pca_by_e
 
     if kernel in ['preferred_image', 'all-images']:
         run_params['kernels'][kernel] = run_params['kernels']['image0'].copy()
-    time_vec = np.arange(run_params['kernels'][kernel]['offset'], run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],1/31)
-    time_vec = np.round(time_vec,2)
-    if 'image' in kernel:
-        time_vec = time_vec[:-1]
-    if ('omissions' == kernel) & ('post-omissions' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('hits' == kernel) & ('post-hits' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('misses' == kernel) & ('post-misses' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('passive_change' == kernel) & ('post-passive_change' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-
-
+    time_vec = get_time_vec(kernel, run_params)
 
     cre_lines = ['Vip-IRES-Cre','Sst-IRES-Cre','Slc17a7-IRES2-Cre'] 
 
