@@ -2034,19 +2034,8 @@ def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, dr
         run_params['kernels'][kernel]['length'] = run_params['kernels']['passive_change']['length'] + run_params['kernels']['post-passive_change']['length']   
     if kernel == 'task':
         run_params['kernels'][kernel] = run_params['kernels']['hits'].copy()   
-    time_vec = np.arange(run_params['kernels'][kernel]['offset'], run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],run_params['spike_bin_width'])
-    time_vec = np.round(time_vec,2) 
-    if 'image' in kernel:
-        time_vec = time_vec[:-1]
-    if ('omissions' == kernel) & ('post-omissions' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('hits' == kernel) & ('post-hits' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('misses' == kernel) & ('post-misses' in run_params['kernels']):
-        time_vec = time_vec[:-1]
-    if ('passive_change' == kernel) & ('post-passive_change' in run_params['kernels']):
-        time_vec = time_vec[:-1]
- 
+    time_vec = get_time_vec(kernel, run_params)
+
     if '-' in kernel:
         weights_df= weights_df.rename(columns={
             'all-omissions':'all_omissions',
@@ -2240,6 +2229,22 @@ def plot_kernel_comparison_shared_images(weights_df,run_params):
     sax.plot(noutputs['time_vec'],noutputs['Familiar'],':',color=colors['Familiar'],\
         label='Familiar Non-Shared',linewidth=4)
     sax.legend(loc='upper left',bbox_to_anchor=(1.05,1),handlelength=4)
+
+def get_time_vec(kernel, run_params):
+    time_vec = np.arange(run_params['kernels'][kernel]['offset'], run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],run_params['spike_bin_width'])+run_params['spike_bin_width']/2
+    time_vec = np.round(time_vec,3) 
+    if 'image' in kernel:
+        time_vec = time_vec[:-1]
+    if ('omissions' == kernel) & ('post-omissions' in run_params['kernels']):
+        time_vec = time_vec[:-1]
+    if ('hits' == kernel) & ('post-hits' in run_params['kernels']):
+        time_vec = time_vec[:-1]
+    if ('misses' == kernel) & ('post-misses' in run_params['kernels']):
+        time_vec = time_vec[:-1]
+    if ('passive_change' == kernel) & ('post-passive_change' in run_params['kernels']):
+        time_vec = time_vec[:-1]
+  
+    return time_vec
 
 def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_threshold=0,session_filter=['Familiar','Novel'],area_filter=[],depth_filter=[0,1000],filter_sessions_on='experience_level',plot_dropout_sorted=True):  
     '''
