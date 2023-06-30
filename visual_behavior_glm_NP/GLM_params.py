@@ -239,6 +239,10 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,
     run_params['kernels']=kernels
     run_params['dropouts']=dropouts
 
+    # Make sub-directories for figure kernels
+    for k in kernels:
+        os.mkdir(fig_kernels_dir+'/'+k)
+
     # Regularization parameter checks 
     a = run_params['L2_optimize_by_cell'] 
     b = run_params['L2_optimize_by_session'] 
