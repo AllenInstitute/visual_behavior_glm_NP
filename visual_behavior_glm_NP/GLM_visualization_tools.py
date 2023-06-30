@@ -1811,8 +1811,8 @@ def plot_perturbation(weights_df, run_params, kernel, drop_threshold=0,session_f
         filter_string+='_depth_'+str(depth_filter[0])+'_'+str(depth_filter[1])
     if area_filter != ['VISp','VISl']:
         filter_string+='_area_'+'_'.join(area_filter)
-    filename2 = os.path.join(run_params['fig_kernels_dir'],kernel+filter_string+'_perturbation_validation.png')
-    filename1 = os.path.join(run_params['fig_kernels_dir'],kernel+filter_string+'_perturbation.png')
+    filename2 = os.path.join(run_params['fig_kernels_dir'],kernel,kernel+filter_string+'_perturbation_validation.png')
+    filename1 = os.path.join(run_params['fig_kernels_dir'],kernel,kernel+filter_string+'_perturbation.png')
 
     # Applying hard thresholds to dataset
     weights = weights_df.query('(targeted_structure in @area_filter)& (cre_line in @cell_list)&(equipment_name in @equipment_list)&(session_number in @session_filter) & (ophys_session_id not in @problem_sessions) & (imaging_depth < @depth_filter[1]) & (imaging_depth > @depth_filter[0])& (variance_explained_full > @threshold) & ({0} < @drop_threshold)'.format(kernel))
@@ -1934,23 +1934,23 @@ def plot_kernel_comparison_by_experience(weights_df, run_params, kernel,threshol
     ax_n.set_ylim(new_y)
     ax_np.set_ylim(new_y)
     if savefig:
-        fig_f.savefig(run_params['fig_kernels_dir']+'/'+kernel+'_familiar_kernel'+extra+'.svg')
-        fig_n.savefig(run_params['fig_kernels_dir']+'/'+kernel+'_novel1_kernel'+extra+'.svg')
-        fig_np.savefig(run_params['fig_kernels_dir']+'/'+kernel+'_novelp1_kernel'+extra+'.svg')
-        print('Figure saved to: '+run_params['fig_kernels_dir']+'/'+kernel+'_familiar_kernel'+extra+'.svg')
-        print('Figure saved to: '+run_params['fig_kernels_dir']+'/'+kernel+'_novel1_kernel'+extra+'.svg')
-        print('Figure saved to: '+run_params['fig_kernels_dir']+'/'+kernel+'_novelp1_kernel'+extra+'.svg')
+        fig_f.savefig(run_params['fig_kernels_dir'] +'/'+kernel+'/'+kernel+'_familiar_kernel'+extra+'.svg')
+        fig_n.savefig(run_params['fig_kernels_dir'] +'/'+kernel+'/'+kernel+'_novel1_kernel'+extra+'.svg')
+        fig_np.savefig(run_params['fig_kernels_dir']+'/'+kernel+'/'+kernel+'_novelp1_kernel'+extra+'.svg')
+        print('Figure saved to: '+run_params['fig_kernels_dir']+'/'+kernel+'/'+kernel+'_familiar_kernel'+extra+'.svg')
+        print('Figure saved to: '+run_params['fig_kernels_dir']+'/'+kernel+'/'+kernel+'_novel1_kernel'+extra+'.svg')
+        print('Figure saved to: '+run_params['fig_kernels_dir']+'/'+kernel+'/'+kernel+'_novelp1_kernel'+extra+'.svg')
 
     k, fig_v , ax_v =plot_kernel_comparison(weights_df,run_params,kernel,save_results=False,session_filter=['Familiar','Novel 1','Novel >1'],cell_filter='Vip-IRES-Cre',compare=['experience_level'],threshold=threshold,drop_threshold=drop_threshold)   
     k, fig_s , ax_s =plot_kernel_comparison(weights_df,run_params,kernel,save_results=False,session_filter=['Familiar','Novel 1','Novel >1'],cell_filter='Sst-IRES-Cre',compare=['experience_level'],threshold=threshold,drop_threshold=drop_threshold)   
     k, fig_e , ax_e =plot_kernel_comparison(weights_df,run_params,kernel,save_results=False,session_filter=['Familiar','Novel 1','Novel >1'],cell_filter='Slc17a7-IRES2-Cre',compare=['experience_level'],threshold=threshold,drop_threshold=drop_threshold)   
     if savefig:
-        fig_v.savefig(run_params['fig_kernels_dir']+'/'+kernel+'_vip_kernel'+extra+'.svg')
-        fig_s.savefig(run_params['fig_kernels_dir']+'/'+kernel+'_sst_kernel'+extra+'.svg')
-        fig_e.savefig(run_params['fig_kernels_dir']+'/'+kernel+'_exc_kernel'+extra+'.svg')
-        print('Figure saved to: '+run_params['fig_kernels_dir']+'/'+kernel+'_vip_kernel'+extra+'.svg')
-        print('Figure saved to: '+run_params['fig_kernels_dir']+'/'+kernel+'_sst_kernel'+extra+'.svg')
-        print('Figure saved to: '+run_params['fig_kernels_dir']+'/'+kernel+'_exc_kernel'+extra+'.svg')
+        fig_v.savefig(run_params['fig_kernels_dir']+'/'+kernel+'/'+kernel+'_vip_kernel'+extra+'.svg')
+        fig_s.savefig(run_params['fig_kernels_dir']+'/'+kernel+'/'+kernel+'_sst_kernel'+extra+'.svg')
+        fig_e.savefig(run_params['fig_kernels_dir']+'/'+kernel+'/'+kernel+'_exc_kernel'+extra+'.svg')
+        print('Figure saved to: '+run_params['fig_kernels_dir']+'/'+kernel+'/'+kernel+'_vip_kernel'+extra+'.svg')
+        print('Figure saved to: '+run_params['fig_kernels_dir']+'/'+kernel+'/'+kernel+'_sst_kernel'+extra+'.svg')
+        print('Figure saved to: '+run_params['fig_kernels_dir']+'/'+kernel+'/'+kernel+'_exc_kernel'+extra+'.svg')
 
 def plot_kernel_comparison_by_kernel_excitation(weights_df, run_params,kernel,savefig=False):
     mapper = {
@@ -2014,7 +2014,7 @@ def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, dr
         input_area_filter = area_filter
         filter_string+='_area_'+'_'.join(area_filter)
 
-    filename = os.path.join(run_params['fig_kernels_dir'],kernel+'_comparison_by_experience'+filter_string+'.png')
+    filename = os.path.join(run_params['fig_kernels_dir'],kernel,kernel+'_comparison_by_experience'+filter_string+'.png')
 
     # Set up time vectors.
     if kernel in ['preferred_image', 'all-images','shared_image','non_shared_image','shared_image_corrected','non_shared_image_corrected']:
@@ -2180,7 +2180,7 @@ def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, dr
         plt.savefig(filename) 
     if save_kernels:
         outputs['time'] = time_vec
-        filename2 = os.path.join(run_params['fig_kernels_dir'],kernel+'_comparison_by_'+'_and_'.join(compare)+filter_string+'.pkl')
+        filename2 = os.path.join(run_params['fig_kernels_dir'],kernel,kernel+'_comparison_by_'+'_and_'.join(compare)+filter_string+'.pkl')
         print('Kernels Saved to: '+filename2)
         file_temp = open(filename2,'wb')
         pickle.dump(outputs, file_temp)
@@ -2231,26 +2231,21 @@ def plot_kernel_comparison_shared_images(weights_df,run_params):
 
 
 def get_time_vec(kernel, run_params):
-    if kernel in ['running','licks','pupil','omissions','hits']:
-        time_vec = np.arange(run_params['kernels'][kernel]['offset'], 
-            run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],
-            run_params['spike_bin_width'])
-        time_vec = np.round(time_vec,3) 
-        if 'image' in kernel:
-            time_vec = time_vec[:-1]
-        if ('omissions' == kernel) & ('post-omissions' in run_params['kernels']):
-            time_vec = time_vec[:-1]
-        if ('hits' == kernel) & ('post-hits' in run_params['kernels']):
-            time_vec = time_vec[:-1]
-        if ('misses' == kernel) & ('post-misses' in run_params['kernels']):
-            time_vec = time_vec[:-1]
-        if ('passive_change' == kernel) & ('post-passive_change' in run_params['kernels']):
-            time_vec = time_vec[:-1]
-    else:
-        time_vec = np.arange(run_params['kernels'][kernel]['offset'],
-            run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length']-
-            run_params['spike_bin_width'], run_params['spike_bin_width'])
-
+    time_vec = np.arange(run_params['kernels'][kernel]['offset'], 
+        run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],
+        run_params['spike_bin_width'])
+    time_vec = np.round(time_vec,3) 
+    if 'image' in kernel:
+        time_vec = time_vec[:-1]
+    if ('omissions' == kernel) & ('post-omissions' in run_params['kernels']):
+        time_vec = time_vec[:-1]
+    if ('hits' == kernel) & ('post-hits' in run_params['kernels']):
+        time_vec = time_vec[:-1]
+    if ('misses' == kernel) & ('post-misses' in run_params['kernels']):
+        time_vec = time_vec[:-1]
+    if ('passive_change' == kernel) & ('post-passive_change' in run_params['kernels']):
+        time_vec = time_vec[:-1]
+    
     if kernel in ['hits','misses','omissions','passive_change']:   
         timesteps_per_stimulus = int(.75/run_params['spike_bin_width'] - 1)
         i = 1
@@ -2303,8 +2298,8 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         area_str = ' '.join(area_filter)
         filter_string+='_area_'+'_'.join(area_filter)
         
-    filename = os.path.join(run_params['fig_kernels_dir'],kernel+'_evaluation_'+filter_string+'.png')
-    filename_svg = os.path.join(run_params['fig_kernels_dir'],kernel+'_evaluation_'+filter_string+'.svg')
+    filename = os.path.join(run_params['fig_kernels_dir'],kernel,kernel+'_evaluation_'+filter_string+'.png')
+    filename_svg = os.path.join(run_params['fig_kernels_dir'],kernel,kernel+'_evaluation_'+filter_string+'.svg')
     problem_sessions = get_problem_sessions()
 
     # Filter by overall VE
@@ -2771,7 +2766,7 @@ def plot_kernel_heatmap(weights_sorted, time_vec,kernel, run_params, ncells = {}
         extra=extra+'_'+session_filter[0].replace(' ','_').replace('>','p')
         title = title + ', '+mapper[session_filter[0]]
     ax.set_title(title,fontsize=20)
-    filename = os.path.join(run_params['fig_kernels_dir'],kernel+'_heatmap_'+extra+'.svg')
+    filename = os.path.join(run_params['fig_kernels_dir'],kernel,kernel+'_heatmap_'+extra+'.svg')
     if savefig:
         plt.savefig(filename) 
     return zlims
@@ -2916,10 +2911,10 @@ def plot_kernel_heatmap_with_dropout(vip_table, sst_table, slc_table, time_vec,k
     #dax3.set_xticks([dax3.get_xlim()[1]/2])
     #dax3.set_xticklabels(['Coding\n Score'],rotation=-70,fontsize=16)
     if savefig:
-        filename = os.path.join(run_params['fig_kernels_dir'],kernel+'_heatmap_with_dropout'+extra+'.svg')
+        filename = os.path.join(run_params['fig_kernels_dir'],kernel,kernel+'_heatmap_with_dropout'+extra+'.svg')
         plt.savefig(filename) 
         print('Figure saved to: '+filename)
-        filename = os.path.join(run_params['fig_kernels_dir'],kernel+'_heatmap_with_dropout'+extra+'.png')
+        filename = os.path.join(run_params['fig_kernels_dir'],kernel,kernel+'_heatmap_with_dropout'+extra+'.png')
         plt.savefig(filename) 
     return zlims
 
