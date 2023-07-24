@@ -48,6 +48,9 @@ if False:
     # Get everything at once
     run_params, results, results_pivoted, weights_df = gfd.get_analysis_dfs(version)
 
+    # Merge active/passive
+    df_combined = gat.merge_active_passive(df_active, df_passive)
+    
     # Evaluate model fit quality
     stats = gvt.var_explained_by_experience(results_pivoted, run_params)
   
