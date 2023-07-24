@@ -49,8 +49,14 @@ if False:
     run_params, results, results_pivoted, weights_df = gfd.get_analysis_dfs(version)
 
     # Merge active/passive
-    df_combined = gat.merge_active_passive(df_active, df_passive)
-    
+    #df_combined = gat.merge_active_passive(df_active, df_passive)
+    results_c = gat.merge_active_passive(results_a, results_p)
+    results_pivoted_c = gat.merge_active_passive(results_pivoted_a, results_pivoted_p)
+    weights_df_c = gat.merge_active_passive(weights_df_a, weights_df_p)
+    stats = gvt.var_explained_by_experience(results_pivoted_c, run_params,merged=True) 
+    stats = gvt.plot_dropout_summary_population(results_c, run_params,merged=True) 
+    stats = gvt.plot_dropout_summary_by_area(results_c, run_params, 'all-images',merged=True)
+
     # Evaluate model fit quality
     stats = gvt.var_explained_by_experience(results_pivoted, run_params)
   
