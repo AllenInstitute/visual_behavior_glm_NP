@@ -642,7 +642,7 @@ def filter_area_by_num_cells(df, area_order,min_cells=None):
     return area_order
 
 def var_explained_by_experience(results_pivoted, run_params,threshold = 0,savefig=False,
-    sort_order='variance',min_cells=None):
+    sort_order='variance',min_cells=100):
     
     if threshold != 0:
         results_pivoted = results_pivoted.query('(variance_explained_full > @threshold)').copy()
@@ -4404,7 +4404,7 @@ def plot_dropout_individual_population(results, run_params,ax=None,palette=None,
 def plot_dropout_summary_by_area(results, run_params,dropout='all-images',
     ax=None,palette=None,add_median=True,include_zero_cells=True,add_title=False,
     dropout_cleaning_threshold=None, exclusion_threshold=None,
-    savefig=False,sort_order='coding'): 
+    savefig=False,sort_order='coding',min_cells=100): 
     '''
         Makes a bar plot that shows the population dropout summary by area 
         palette , color palette to use. If None, uses gvt.project_colors()
@@ -4458,6 +4458,7 @@ def plot_dropout_summary_by_area(results, run_params,dropout='all-images',
     elif sort_order=='coding':
         area_order =data_to_plot.groupby('structure_acronym')['explained_variance'].mean().sort_values().index.values
 
+    area_order = filter_area_by_num_cells(results, area_order,min_cells)
     sns.boxplot(
         data = data_to_plot,
         x='structure_acronym',
