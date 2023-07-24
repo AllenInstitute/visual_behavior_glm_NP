@@ -8,6 +8,7 @@ import pandas as pd
 import scipy 
 from tqdm import tqdm
 from copy import copy
+from copy import deepcopy
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.linear_model import ElasticNetCV
@@ -1013,6 +1014,7 @@ def extract_and_annotate_ephys(session, run_params):
    
     fit = dict()
     session = active_passive_split(session,run_params)
+    session, run_params = establish_shared_and_non_shared_images(session, run_params)
     fit = establish_ephys_timebins(fit,session, run_params)
     fit = process_ephys_data(fit, session, run_params)
 
@@ -1039,6 +1041,37 @@ def active_passive_split(session,run_params):
             session.stimulus_presentations.query('stimulus_block == 5').copy()   
     session = add_image_index(session)
     return session
+
+def establish_shared_and_non_shared_images(session, run_params):
+    # Annotate stimulus table
+    shared_images = ['im111_r','im083_r']
+    session.filtered_stimulus['shared_image'] = \
+        [x in shared_images for x in session.filtered_stimulus['image_name']]
+    session.filtered_stimulus['non_shared_image'] = \
+        [x not in shared_images for x in session.filtered_stimulus['image_name']]
+
+    # Set up dropout
+    run_params['dropouts']['shared_images'] = deepcopy(run_params['dropouts']['Full'])
+    run_params['dropouts']['non_shared_images'] = deepcopy(run_params['dropouts']['Full'])
+   
+    if 'images_G' in session.metadata['session_type']:
+        # index 5,6
+        shared = ['image5','image6']
+        non_shared = ['image0','image1','image2','image3','image4','image7']
+    elif 'images_H' in session.metadata['session_type']:
+        # index, 3,6
+        shared = ['image3','image6']
+        non_shared = ['image0','image1','image2','image4','image5','image7']
+    else:
+        raise Exception('unknown session type')
+    for k in shared:
+        run_params['dropouts']['shared_images']['kernels'].remove(k)
+        run_params['dropouts']['shared_images']['dropped_kernels'].append(k)
+    for k in non_shared:
+        run_params['dropouts']['non_shared_images']['kernels'].remove(k)
+        run_params['dropouts']['non_shared_images']['dropped_kernels'].append(k)
+
+    return session, run_params
 
 def establish_ephys_timebins(fit, session, run_params):
     '''
