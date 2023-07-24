@@ -44,6 +44,9 @@ if False:
     results = gat.get_summary_results(version)
     results_pivoted = gat.get_pivoted_results(results)
     weights_df = gat.get_weights_df(version, results_pivoted)
+    
+    # Get everything at once
+    run_params, results, results_pivoted, weights_df = gfd.get_analysis_dfs(version)
 
     # Evaluate model fit quality
     stats = gvt.var_explained_by_experience(results_pivoted, run_params)

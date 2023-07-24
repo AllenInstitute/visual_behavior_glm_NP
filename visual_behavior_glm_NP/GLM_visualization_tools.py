@@ -632,10 +632,17 @@ def var_explained_matched(results_pivoted, run_params):
     return results_pivoted.groupby(['cell_type','experience_level','matched'])['variance_explained_percent'].describe()
 
  
- 
+
+def filter_area_by_num_cells(df, area_order,min_cells=None):
+    if min_cells is None:
+        return area_order 
+    area_counts = df.groupby('structure_acronym')['identifier'].count()
+    good_areas = area_counts[area_counts >= min_cells].index.values
+    area_order = [x for x in area_order if x in good_areas]
+    return area_order
 
 def var_explained_by_experience(results_pivoted, run_params,threshold = 0,savefig=False,
-    sort_order='variance'):
+    sort_order='variance',min_cells=100):
     
     if threshold != 0:
         results_pivoted = results_pivoted.query('(variance_explained_full > @threshold)').copy()
@@ -649,6 +656,8 @@ def var_explained_by_experience(results_pivoted, run_params,threshold = 0,savefi
         area_order = get_area_order(results_pivoted)
     elif sort_order=='variance':
         area_order = results_pivoted.groupby('structure_acronym')['variance_explained_percent'].mean().sort_values().index.values
+    
+    area_order = filter_area_by_num_cells(results_pivoted, area_order,min_cells)
     ax = sns.boxplot(
         x='structure_acronym',
         hue='experience_level',
@@ -4395,7 +4404,7 @@ def plot_dropout_individual_population(results, run_params,ax=None,palette=None,
 def plot_dropout_summary_by_area(results, run_params,dropout='all-images',
     ax=None,palette=None,add_median=True,include_zero_cells=True,add_title=False,
     dropout_cleaning_threshold=None, exclusion_threshold=None,
-    savefig=False,sort_order='coding'): 
+    savefig=False,sort_order='coding',min_cells=100): 
     '''
         Makes a bar plot that shows the population dropout summary by area 
         palette , color palette to use. If None, uses gvt.project_colors()
@@ -4449,6 +4458,7 @@ def plot_dropout_summary_by_area(results, run_params,dropout='all-images',
     elif sort_order=='coding':
         area_order =data_to_plot.groupby('structure_acronym')['explained_variance'].mean().sort_values().index.values
 
+    area_order = filter_area_by_num_cells(results, area_order,min_cells)
     sns.boxplot(
         data = data_to_plot,
         x='structure_acronym',
