@@ -83,6 +83,10 @@ def project_colors():
         'novel':(100/255,152/255,193/255),
         'Familiar':(0.66,0.06,0.086),
         'Novel':(0.044,0.33,0.62),
+        'Familiar_active':(0.66,0.06,0.086),
+        'Novel_active':(0.044,0.33,0.62),
+        'Familiar_passive':(0.83,0.053,0.543),
+        'Novel_passive':(0.2,0.6,0.8),
         'Novel >1':(0.34,.17,0.57),
         'deep':'r',
         'shallow':'b',
@@ -642,7 +646,7 @@ def filter_area_by_num_cells(df, area_order,min_cells=None):
     return area_order
 
 def var_explained_by_experience(results_pivoted, run_params,threshold = 0,savefig=False,
-    sort_order='variance',min_cells=100):
+    sort_order='variance',min_cells=100,merged=False):
     
     if threshold != 0:
         results_pivoted = results_pivoted.query('(variance_explained_full > @threshold)').copy()
@@ -655,8 +659,15 @@ def var_explained_by_experience(results_pivoted, run_params,threshold = 0,savefi
     if sort_order =='alphabetical':
         area_order = get_area_order(results_pivoted)
     elif sort_order=='variance':
-        area_order = results_pivoted.groupby('structure_acronym')['variance_explained_percent'].mean().sort_values().index.values
+        area_order = results_pivoted\
+            .groupby('structure_acronym')['variance_explained_percent']\
+            .mean().sort_values().index.values
     
+    if merged:
+        hue_order = ['Familiar_active','Familiar_passive','Novel_active','Novel_passive']
+    else:
+        hue_order = ['Familiar','Novel']    
+
     area_order = filter_area_by_num_cells(results_pivoted, area_order,min_cells)
     ax = sns.boxplot(
         x='structure_acronym',
@@ -664,7 +675,7 @@ def var_explained_by_experience(results_pivoted, run_params,threshold = 0,savefi
         y='variance_explained_percent',
         data=results_pivoted,
         order=area_order,
-        hue_order=['Familiar','Novel'],
+        hue_order=hue_order,
         palette=colors,
         fliersize=0,
         linewidth=1,
