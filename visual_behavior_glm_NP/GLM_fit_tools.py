@@ -1551,11 +1551,15 @@ def add_discrete_kernel_by_label(kernel_name,design, run_params,session,fit):
                 event_times = session.filtered_stimulus\
                     .query('is_change & ~rewarded',engine='python')['start_time'].values
             event_times = event_times[~np.isnan(event_times)]
-            if (len(session.rewards) < 5) or (not run_params['active']):
+            num_rewards = len(session.rewards\
+                .query('(timestamps > @start_time)&(timestamps <@end_time)'))
+            if (num_rewards < 5) or (not run_params['active']):
                 raise Exception('\tTrial type regressors arent defined for passive sessions'+\
                     ' (sessions with less than 5 rewards)')
         elif event == 'passive_change':
-            if (run_params['active']) or (len(session.rewards) > 5): 
+            num_rewards = len(session.rewards\
+                .query('(timestamps > @start_time)&(timestamps <@end_time)'))
+            if (run_params['active']) or (num_rewards > 5): 
                 raise Exception('\tPassive Change kernel cant be added to active sessions')      
             event_times = session.filtered_stimulus\
                 .query('is_change',engine='python')['start_time'].values
