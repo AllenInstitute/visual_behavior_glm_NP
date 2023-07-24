@@ -1763,4 +1763,10 @@ def check_mesoscope(results,filters=['cre_line','targeted_structure','depth','me
     summary['count']=results.groupby(filters)['Full__avg_cv_var_test'].count()
     return summary
 
+def merge_active_passive(dfa,dfp):
+    dfa['active'] = 'active'
+    dfp['active'] = 'passive'
+    df = pd.concat([dfa,dfp])
+    df['experience_level'] = df['experience_level']+'_'+df['active']
+    return df
 
