@@ -104,7 +104,7 @@ def check_weight_lengths(fit,design):
             if x.startswith('image0')])
         assert num_weights_fit == num_weights_per_stimulus, \
             "Number of weights in fit dictionary is incorrect"
-    print('Checked weight/kernel lengths against timesteps per stimulus')
+    print(get_timestamp()+'Checked weight/kernel lengths against timesteps per stimulus')
 
 def setup_cv(fit,run_params):
     '''
@@ -136,29 +136,29 @@ def fit_experiment(oeid, run_params, NO_DROPOUTS=False):
     '''
     
     # Log oeid
-    print("Fitting ecephys_session_id: "+str(oeid)) 
+    print(get_timestamp()+"Fitting ecephys_session_id: "+str(oeid)) 
     if run_params['version_type'] == 'production':
-        print('Production fit, will include all dropouts')
+        print(get_timestamp()+'Production fit, will include all dropouts')
     elif run_params['version_type'] == 'standard':
-        print('Standard fit, will only include standard dropouts')
+        print(get_timestamp()+'Standard fit, will only include standard dropouts')
     elif run_params['version_type'] == 'minimal':
-        print('Minimal fit, will not perform dropouts')
+        print(get_timestamp()+'Minimal fit, will not perform dropouts')
 
     # Warn user if debugging tools are active
     if NO_DROPOUTS:
-        print('WARNING! NO_DROPOUTS=True in fit_experiment(), dropout analysis '+\
+        print(get_timestamp()+'WARNING! NO_DROPOUTS=True in fit_experiment(), dropout analysis '+\
             'will NOT run, despite version_type')
 
     # Load Data
-    print('Loading data')
+    print(get_timestamp()+'Loading data')
     session = load_data(oeid)
 
     # Processing df/f data
-    print('Processing df/f data')
+    print(get_timestamp()+'Processing df/f data')
     session, fit, run_params = extract_and_annotate_ephys(session,run_params)
 
     # Make Design Matrix
-    print('Build Design Matrix')
+    print(get_timestamp()+'Build Design Matrix')
     design = DesignMatrix(fit) 
     design = add_kernels(design, run_params, session, fit) 
 
@@ -166,27 +166,27 @@ def fit_experiment(oeid, run_params, NO_DROPOUTS=False):
     design, fit = split_by_engagement(design, run_params, session, fit)
 
     # Set up CV splits
-    print('Setting up CV')
+    print(get_timestamp()+'Setting up CV')
     fit = setup_cv(fit,run_params)
 
     # Determine Regularization Strength
-    print('Evaluating Regularization values')
+    print(get_timestamp()+'Evaluating Regularization values')
     fit = evaluate_ridge(fit, design, run_params,session)
 
     # Set up kernels to drop for model selection
-    print('Setting up model selection dropout')
+    print(get_timestamp()+'Setting up model selection dropout')
     fit['dropouts'] = copy(run_params['dropouts'])
     if NO_DROPOUTS:
         # Cancel dropouts if we are in debugging mode
         fit['dropouts'] = {'Full':copy(fit['dropouts']['Full'])}
     
     # Iterate over model selections
-    print('Iterating over model selection')
+    print(get_timestamp()+'Iterating over model selection')
     fit = evaluate_models(fit, design, run_params)
     check_weight_lengths(fit,design)
 
     # Save fit dictionary to compressed pickle file
-    print('Saving fit dictionary')
+    print(get_timestamp()+'Saving fit dictionary')
     fit['failed_kernels'] = run_params['failed_kernels']
     fit['failed_dropouts'] = run_params['failed_dropouts']
     filepath = os.path.join(run_params['experiment_output_dir'],str(oeid)+'.pbz2')
@@ -194,7 +194,7 @@ def fit_experiment(oeid, run_params, NO_DROPOUTS=False):
         cPickle.dump(fit,f)
 
     # Pack up
-    print('Finished') 
+    print(get_timestamp()+'Finished') 
     return session, fit, design
 
 def evaluate_ridge(fit, design,run_params,session):
@@ -217,14 +217,14 @@ def evaluate_ridge(fit, design,run_params,session):
             cell_L2_regularization     # the optimal L2 value for each cell 
     '''
     if run_params['L2_use_fixed_value']:
-        print('Using a hard-coded regularization value')
+        print(get_timestamp()+'Using a hard-coded regularization value')
         fit['avg_L2_regularization'] = run_params['L2_fixed_lambda']
     elif run_params['L2_optimize_by_cre']:
-        print('Using a hard-coded regularization value for each cre line')
+        print(get_timestamp()+'Using a hard-coded regularization value for each cre line')
         this_cre = session.metadata['cre_line']
         fit['avg_L2_regularization'] = run_params['L2_cre_values'][this_cre]
     elif not fit['ok_to_fit_preferred_engagement']:
-        print('\tSkipping ridge evaluation because insufficient preferred engagement timepoints')
+        print(get_timestamp()+'\tSkipping ridge evaluation because insufficient preferred engagement timepoints')
         fit['avg_L2_regularization'] = np.nan      
         fit['cell_L2_regularization'] = np.empty((fit['spike_count_arr'].shape[1],))
         fit['L2_test_cv'] = np.empty((fit['spike_count_arr'].shape[1],)) 
@@ -237,10 +237,10 @@ def evaluate_ridge(fit, design,run_params,session):
         fit['L2_at_grid_min'][:] =np.nan
         fit['L2_at_grid_max'][:] =np.nan
     elif run_params['ElasticNet']:
-        print('Evaluating a grid of regularization values for Lasso')
+        print(get_timestamp()+'Evaluating a grid of regularization values for Lasso')
         fit = evaluate_lasso(fit, design, run_params)
     else:
-        print('Evaluating a grid of regularization values')
+        print(get_timestamp()+'Evaluating a grid of regularization values')
         if run_params['L2_grid_type'] == 'log':
             fit['L2_grid'] = np.geomspace(run_params['L2_grid_range'][0], \
                 run_params['L2_grid_range'][1],num = run_params['L2_grid_num'])
@@ -342,7 +342,7 @@ def evaluate_models(fit, design, run_params):
 
     '''
     if not fit['ok_to_fit_preferred_engagement']:
-        print('\tSkipping model evaluate because insufficient preferred engagement timepoints')
+        print(get_timestamp()+'\tSkipping model evaluate because insufficient preferred engagement timepoints')
         cellids = fit['fit_trace_arr']['cell_specimen_id'].values
         W = np.empty((0,fit['fit_trace_arr'].shape[1]))
         W[:] = np.nan
@@ -387,17 +387,17 @@ def evaluate_models(fit, design, run_params):
     if run_params['L2_use_fixed_value'] or \
         run_params['L2_optimize_by_session'] or \
         run_params['L2_optimize_by_cre']:
-        print('Using a constant regularization value across all cells')
+        print(get_timestamp()+'Using a constant regularization value across all cells')
         return evaluate_models_same_ridge(fit,design, run_params)
     elif run_params['L2_optimize_by_cell']:
-        print('Using an optimized regularization value for each cell')
+        print(get_timestamp()+'Using an optimized regularization value for each cell')
         return evaluate_models_different_ridge(fit,design,run_params)
     elif run_params['ElasticNet']:
-        print('Using elastic net regularization for each cell')
+        print(get_timestamp()+'Using elastic net regularization for each cell')
         return evaluate_models_lasso(fit,design, run_params)
     else:
         raise Exception('Unknown regularization approach')
-    print('Done evaluating models')
+    print(get_timestamp()+'Done evaluating models')
 
 def evaluate_models_lasso(fit,design,run_params):
     '''
@@ -772,11 +772,11 @@ def build_dataframe_from_dropouts(fit,run_params):
     # Check for cells with no activity in entire trace
     nan_cells = np.where(np.all(fit['spike_count_arr'] == 0, axis=0))[0]
     if len(nan_cells) > 0:
-        print('I found {} cells with all 0 in the spike_count_arr'.format(len(nan_cells)))
+        print(get_timestamp()+'I found {} cells with all 0 in the spike_count_arr'.format(len(nan_cells)))
         if not run_params['use_events']:
             raise Exception('All 0 in df/f trace')
         else:
-            print('Setting Variance Explained to 0')
+            print(get_timestamp()+'Setting Variance Explained to 0')
             fit['nan_cell_ids'] = fit['spike_count_arr'].cell_specimen_id.values[nan_cells]
  
     # Iterate over models
@@ -1000,8 +1000,8 @@ def process_eye_data(session,run_params,ophys_timestamps=None):
             ophys_eye[column].fillna(method='ffill',inplace=True)
             if column in z_score:
                 ophys_eye[column+'_zscore'] = scipy.stats.zscore(ophys_eye[column],nan_policy='omit')
-    print('                 : '+'mean centering')
-    print('                 : '+'standardized to unit variance')
+    print(get_timestamp()+'                 : '+'mean centering')
+    print(get_timestamp()+'                 : '+'standardized to unit variance')
     return ophys_eye 
 
 
@@ -1020,7 +1020,7 @@ def extract_and_annotate_ephys(session, run_params):
 
     # If we are splitting on engagement, then determine the engagement timepoints
     if run_params['split_on_engagement']:
-        print('Adding Engagement labels. Preferred engagement state: '+\
+        print(get_timestamp()+'Adding Engagement labels. Preferred engagement state: '+\
             run_params['engagement_preference'])
         raise Exception('need to implement engagement splits')
         fit = add_engagement_labels(fit, session, run_params)
@@ -1032,11 +1032,11 @@ def extract_and_annotate_ephys(session, run_params):
 def active_passive_split(session,run_params):
     # Determine relevant stimuli for this fit
     if run_params['active']:
-        print('active session')
+        print(get_timestamp()+'active session')
         session.filtered_stimulus = \
             session.stimulus_presentations.query('active').copy()
     else:
-        print('passive session')
+        print(get_timestamp()+'passive session')
         session.filtered_stimulus = \
             session.stimulus_presentations.query('stimulus_block == 5').copy()   
     session = add_image_index(session)
@@ -1245,7 +1245,7 @@ def check_image_kernel_alignment(design,run_params):
         Checks to see if any of the image kernels overlap
         Note this fails if the early image is omitted, but I can't check the omission kernels directly because they overlap on purpose with images
     '''
-    print('Checking stimulus interpolation')
+    print(get_timestamp()+'Checking stimulus interpolation')
 
     kernels = ['image0','image1','image2','image3','image4','image5','image6','image7']
     X = design.get_X(kernels=kernels)
@@ -1257,10 +1257,10 @@ def check_image_kernel_alignment(design,run_params):
     if overlap > tolerance:
         raise Exception('Image kernels overlap beyond tolerance: {}, {}'.format(overlap, tolerance))
     elif overlap > 1:
-        print('Image kernels overlap, but within tolerance: {}, {}'.format(overlap, tolerance))
+        print(get_timestamp()+'Image kernels overlap, but within tolerance: {}, {}'.format(overlap, tolerance))
     else:
-        print('No image kernel overlap: {}'.format(overlap))
-    print('Passed all interpolation checks')
+        print(get_timestamp()+'No image kernel overlap: {}'.format(overlap))
+    print(get_timestamp()+'Passed all interpolation checks')
 
 
 def add_engagement_labels(fit, session, run_params):
@@ -1296,8 +1296,8 @@ def add_engagement_labels(fit, session, run_params):
     
     # Interpolate onto fit timestamps
     fit['engaged']= interpolate_to_ophys_timestamps(fit,engaged_df)['values'].values 
-    print('\t% of session engaged:    '+str(np.sum(fit['engaged'])/len(fit['engaged'])))
-    print('\t% of session disengaged: '+str(1-np.sum(fit['engaged'])/len(fit['engaged'])))
+    print(get_timestamp()+'\t% of session engaged:    '+str(np.sum(fit['engaged'])/len(fit['engaged'])))
+    print(get_timestamp()+'\t% of session disengaged: '+str(1-np.sum(fit['engaged'])/len(fit['engaged'])))
 
     # Check min_engaged_duration:
     seconds_in_engaged = np.sum(fit['engaged'])/fit['ophys_frame_rate']
@@ -1312,7 +1312,7 @@ def add_engagement_labels(fit, session, run_params):
             seconds_in_disengaged > run_params['min_engaged_duration']
     
     if not fit['ok_to_fit_preferred_engagement']:
-        print('WARNING, insufficient time points in preferred engagement state.'+\
+        print(get_timestamp()+'WARNING, insufficient time points in preferred engagement state.'+\
             ' This model will not fit') 
     return fit
 
@@ -1361,7 +1361,7 @@ def clean_failed_kernels(run_params):
         Removes the failed kernels from run_params['kernels'], and run_params['dropouts']
     '''
     if run_params['failed_kernels']:
-        print('The following kernels failed to be added to the model: ')
+        print(get_timestamp()+'The following kernels failed to be added to the model: ')
         print(run_params['failed_kernels'])
         print()   
  
@@ -1396,7 +1396,7 @@ def clean_failed_kernels(run_params):
                 run_params['failed_dropouts'].add(dropout)
 
     if run_params['failed_dropouts']:
-        print('The following dropouts failed to be added to the model: ')
+        print(get_timestamp()+'The following dropouts failed to be added to the model: ')
         print(run_params['failed_dropouts'])
         print()
 
@@ -1410,7 +1410,7 @@ def add_continuous_kernel_by_label(kernel_name, design, run_params, session,fit)
         session         the SDK session object for this experiment
         fit             the fit object for this model       
     ''' 
-    print('    Adding kernel: '+kernel_name)
+    print(get_timestamp()+'    Adding kernel: '+kernel_name)
     try:
         event = run_params['kernels'][kernel_name]['event']
 
@@ -1475,7 +1475,7 @@ def add_continuous_kernel_by_label(kernel_name, design, run_params, session,fit)
         else:
             raise Exception('Could not resolve kernel label')
     except Exception as e:
-        print('\tError encountered while adding kernel for '+kernel_name+'. \n'+\
+        print(get_timestamp()+'\tError encountered while adding kernel for '+kernel_name+'. \n'+\
             '\tAttempting to continue without this kernel.' )
         print(e)
         # Need to remove from relevant lists
@@ -1519,13 +1519,13 @@ def standardize_inputs(timeseries, mean_center=True, unit_variance=True,max_valu
         raise Exception('Cannot perform max_value standardization and mean_center or unit_variance standardizations together.')
 
     if mean_center:
-        print('                 : '+'mean centering')
+        print(get_timestamp()+'                 : '+'mean centering')
         timeseries = timeseries -np.mean(timeseries) # mean center
     if unit_variance:
-        print('                 : '+'standardized to unit variance')
+        print(get_timestamp()+'                 : '+'standardized to unit variance')
         timeseries = timeseries/np.std(timeseries)
     if max_value is not None:
-        print('                 : '+'normalized by max value: '+str(max_value))
+        print(get_timestamp()+'                 : '+'normalized by max value: '+str(max_value))
         timeseries = timeseries/max_value
 
     return timeseries
@@ -1539,7 +1539,7 @@ def add_discrete_kernel_by_label(kernel_name,design, run_params,session,fit):
         session         the SDK session object for this experiment
         fit             the fit object for this model       
     ''' 
-    print('    Adding kernel: '+kernel_name)
+    print(get_timestamp()+'    Adding kernel: '+kernel_name)
     try:
         if not fit['ok_to_fit_preferred_engagement']:
             raise Exception('\tInsufficient time points to add kernel') 
@@ -1626,7 +1626,7 @@ def add_discrete_kernel_by_label(kernel_name,design, run_params,session,fit):
         check_by_engagement_state(run_params, fit, event_times,event)
 
     except Exception as e:
-        print('\tError encountered while adding kernel for '+kernel_name+'. \n'+\
+        print(get_timestamp()+'\tError encountered while adding kernel for '+kernel_name+'. \n'+\
             '\tAttemping to continue without this kernel.' )
         print(e)
         # Need to remove from relevant lists
@@ -1814,7 +1814,7 @@ def split_by_engagement(design, run_params, session, fit):
         return design, fit
    
     raise Exception('need to implement') 
-    print('Splitting fit dictionary entries by engagement')
+    print(get_timestamp()+'Splitting fit dictionary entries by engagement')
 
     # Set up time arrays, and dff/events arrays to match engagement preference
     fit['engaged_trace_arr'] = fit['fit_trace_arr'][fit['engaged'].astype(bool),:]
@@ -1827,7 +1827,7 @@ def split_by_engagement(design, run_params, session, fit):
     fit['bin_centers'] = fit[run_params['engagement_preference']+'_trace_timestamps']
 
     # trim design matrix  
-    print('Trimming Design Matrix by engagement')
+    print(get_timestamp()+'Trimming Design Matrix by engagement')
     if run_params['engagement_preference'] == 'engaged':
         design.trim_X(fit['engaged'].astype(bool))
     else:
@@ -2073,3 +2073,6 @@ def error_by_time(fit, design):
     plt.ylabel('Model Error (df/f)')
     
 
+def get_timestamp():
+    t = time.localtime()
+    return time.strftime('%Y-%m-%d: %H:%M:%S')+' '

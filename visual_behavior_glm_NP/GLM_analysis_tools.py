@@ -840,7 +840,8 @@ def process_session_to_df(oeid, run_params):
     return session_df
 
 
-def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=False,normalize=False):
+def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=False,
+    normalize=False):
     '''
         Builds a dataframe of (cell_specimen_id, ecephys_session_id) with the weight parameters 
         for each kernel. Some columns may have NaN if that cell did not have a kernel, 
@@ -1290,7 +1291,8 @@ def clean_glm_dropout_scores(results_pivoted, run_params, in_session_numbers=Non
 
 def build_inventory_table(vrange=[100,120],return_inventories=False):
     '''
-        Builds a table of all available GLM versions in the supplied range, and reports how many missing/fit experiments/rois in that version
+        Builds a table of all available GLM versions in the supplied range, 
+        and reports how many missing/fit experiments/rois in that version
         
         Optionally returns the list of missing experiments and rois
     '''
