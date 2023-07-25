@@ -74,21 +74,21 @@ class GLM(object):
             # Fit the model, can be slow
             self.fit_model()
         
-        print('done fitting model, collecting results')
+        print(gft.get_timestamp()+'done fitting model, collecting results')
         self.collect_results()
-        print('done collecting results')
+        print(gft.get_timestamp()+'done collecting results')
 
         self.timestamps = self.fit['spike_count_arr']['bin_centers'].values
 
         if log_results:
-            print('logging results to mongo')
+            print(gft.get_timestamp()+'logging results to mongo')
             gat.log_results_to_mongo(self) 
-            print('done logging results to mongo')
+            print(gft.get_timestamp()+'done logging results to mongo')
         if log_weights:
-            print('logging W matrix to mongo')
+            print(gft.get_timestamp()+'logging W matrix to mongo')
             gat.log_weights_matrix_to_mongo(self)
-            print('done logging W matrix to mongo')
-        print('done building GLM object')
+            print(gft.get_timestamp()+'done logging W matrix to mongo')
+        print(gft.get_timestamp()+'done building GLM object')
 
     def _import_glm_fit_tools(self):
         # TODO, need more documentation here
