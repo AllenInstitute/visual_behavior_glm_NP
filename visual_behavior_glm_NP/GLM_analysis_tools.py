@@ -338,13 +338,13 @@ def already_fit(oeid, version):
     return document_count > 0
 
 
-def log_results_to_mongo(glm):
+def log_results_to_mongo(glm,insert_many=True):
     '''
     logs full results and results summary to mongo
     Ensures that there is only one entry per cell/experiment (overwrites if entry already exists)
     '''
     full_results = glm.results.reset_index()
-    results_summary = glm.dropout_summary
+    results_summary = glm.dropout_summary.reset_index()
 
     full_results['glm_version'] = str(glm.version)
     full_results['ecephys_session_id'] = glm.ecephys_session_id
@@ -361,14 +361,22 @@ def log_results_to_mongo(glm):
     for df,collection in zip([full_results, results_summary], ['results_full','results_summary']):
         coll = conn['np_glm'][collection]
 
-        for idx,row in df.iterrows():
-            entry = row.to_dict()
-            db.update_or_create(
-                coll,
-                db.clean_and_timestamp(entry),
-                keys_to_check = keys_to_check[collection]
-            )
+        if insert_many:
+            entries = df.to_dict(orient='records')
+            entries = [db.clean_and_timestamp(entry) for entry in entries]
+            coll.update_many(entries)
+        else:
+            for idx,row in df.iterrows():
+                entry = row.to_dict()
+                db.update_or_create(
+                    coll,
+                    db.clean_and_timestamp(entry),
+                    keys_to_check = keys_to_check[collection]
+                )
+    
     conn.close()
+
+
 
 
 def xarray_to_mongo(xarray):

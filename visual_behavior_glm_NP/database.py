@@ -123,4 +123,3 @@ def update_or_create(collection, document, keys_to_check, force_write=False):
             collection.update_one(query, {"$set": simplify_entry(document)})
 
 
-
