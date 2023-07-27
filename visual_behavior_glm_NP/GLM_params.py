@@ -26,33 +26,15 @@ def get_versions(vrange=[100,110]):
 def define_kernels():
     kernels = {
         'intercept':    {'event':'intercept',   'type':'continuous',    'length':0,     'offset':0,     'num_weights':None, 'dropout':True, 'text': 'constant value'},
-        'hits':         {'event':'hit',         'type':'discrete',      'length':2.25,   'offset':0,    'num_weights':None, 'dropout':True, 'text': 'lick to image change'},
-        'misses':       {'event':'miss',        'type':'discrete',      'length':2.25,   'offset':0,    'num_weights':None, 'dropout':True, 'text': 'no lick to image change'},
-        'passive_change':   {'event':'passive_change','type':'discrete','length':2.25,   'offset':0,    'num_weights':None, 'dropout':True, 'text': 'passive session image change'},
-        #'hits':         {'event':'hit',         'type':'discrete',      'length':.75,   'offset':0,    'num_weights':None, 'dropout':True, 'text': 'lick to image change'},
-        #'misses':       {'event':'miss',        'type':'discrete',      'length':.75,   'offset':0,    'num_weights':None, 'dropout':True, 'text': 'no lick to image change'},
-        #'passive_change':   {'event':'passive_change','type':'discrete','length':.75,   'offset':0,    'num_weights':None, 'dropout':True, 'text': 'passive session image change'},
-        #'post-hits':    {'event':'hit',         'type':'discrete',      'length':1.5,   'offset':0.75,    'num_weights':None, 'dropout':True, 'text': 'lick to image change'},
-        #'post-misses':  {'event':'miss',        'type':'discrete',      'length':1.5,   'offset':0.75,    'num_weights':None, 'dropout':True, 'text': 'no lick to image change'},
-        #'post-passive_change': {'event':'passive_change','type':'discrete','length':1.5,   'offset':0.75,    'num_weights':None, 'dropout':True, 'text': 'passive session image change'},
-        'omissions':        {'event':'omissions',   'type':'discrete',  'length':3,      'offset':0,     'num_weights':None, 'dropout':True, 'text': 'image was omitted'},
-        #'omissions':        {'event':'omissions',   'type':'discrete',  'length':0.75,      'offset':0,     'num_weights':None, 'dropout':True, 'text': 'image was omitted'},
-        #'post-omissions':   {'event':'omissions',   'type':'discrete',  'length':2.25,   'offset':0.75,  'num_weights':None, 'dropout':True, 'text': 'images after omission'},
+        'hits':         {'event':'hit',         'type':'discrete',      'length':2.25,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'lick to image change'},
+        'misses':       {'event':'miss',        'type':'discrete',      'length':2.25,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'no lick to image change'},
+        'passive_change':   {'event':'passive_change','type':'discrete','length':2.25,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'passive session image change'},
+        'omissions':        {'event':'omissions',   'type':'discrete',  'length':3,     'offset':0,     'num_weights':None, 'dropout':True, 'text': 'image was omitted'},
         'each-image':   {'event':'each-image',  'type':'discrete',      'length':0.75,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'image presentation'},
         'running':      {'event':'running',     'type':'continuous',    'length':2,     'offset':-1,    'num_weights':None, 'dropout':True, 'text': 'normalized running speed'},
         'pupil':        {'event':'pupil',       'type':'continuous',    'length':2,     'offset':-1,    'num_weights':None, 'dropout':True, 'text': 'Z-scored pupil diameter'},
         'licks':        {'event':'licks',       'type':'discrete',      'length':2,     'offset':-1,    'num_weights':None, 'dropout':True, 'text': 'mouse lick'},
-        #'false_alarms':     {'event':'false_alarm',   'type':'discrete','length':5.5,   'offset':-1,    'num_weights':None, 'dropout':True, 'text': 'lick on catch trials'},
-        #'correct_rejects':  {'event':'correct_reject','type':'discrete','length':5.5,   'offset':-1,    'num_weights':None, 'dropout':True, 'text': 'no lick on catch trials'},
-        #'time':         {'event':'time',        'type':'continuous',    'length':0,     'offset':0,    'num_weights':None,  'dropout':True, 'text': 'linear ramp from 0 to 1'},
-        #'beh_model':    {'event':'beh_model',   'type':'continuous',    'length':.5,    'offset':-.25, 'num_weights':None,  'dropout':True, 'text': 'behavioral model weights'},
-        #'lick_bouts':   {'event':'lick_bouts',  'type':'discrete',      'length':4,     'offset':-2,   'num_weights':None,  'dropout':True, 'text': 'lick bout'},
-        #'lick_model':   {'event':'lick_model',  'type':'continuous',    'length':2,     'offset':-1,   'num_weights':None,  'dropout':True, 'text': 'lick probability from video'},
-        #'groom_model':  {'event':'groom_model', 'type':'continuous',    'length':2,     'offset':-1,   'num_weights':None,  'dropout':True, 'text': 'groom probability from video'},
     }
-    ## add face motion energy PCs
-    # for PC in range(5):
-    #     kernels['face_motion_PC_{}'.format(PC)] = {'event':'face_motion_PC_{}'.format(PC), 'type':'continuous', 'length':2, 'offset':-1, 'dropout':True, 'text':'PCA from face motion videos'}
 
     return kernels
 
@@ -228,8 +210,8 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,
         'image_kernel_overlap_tol':5,   # Number of timesteps image kernels are allowed to overlap during entire session.
         'dropout_threshold':0.005,      # Minimum variance explained by full model
         'version_type':'standard',      # Should be either 'production' (run everything), 'standard' (run standard dropouts), 'minimal' (just full model)
-        'active': False,               # Are we fitting the active behavior (True) or passive (False)
-        'spike_bin_width':.005,         # Duration of spike bins in s. Must be cleanly divide 750ms
+        'active': True,                # Are we fitting the active behavior (True) or passive (False)
+        'spike_bin_width':.025,         # Duration of spike bins in s. Must be cleanly divide 750ms
     } 
 
     # Define Kernels and dropouts
