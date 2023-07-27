@@ -2277,7 +2277,8 @@ def get_time_vec(kernel, run_params):
             time_vec[i*timesteps_per_stimulus:] = \
                 time_vec[i*timesteps_per_stimulus:]+run_params['spike_bin_width']      
             i+=1
-
+        time_vec = time_vec[:-(i-1)]
+    
     time_vec = time_vec + run_params['spike_bin_width']/2 
     return time_vec
 
