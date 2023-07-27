@@ -1610,10 +1610,35 @@ def add_discrete_kernel_by_label(kernel_name,design, run_params,session,fit):
         elif (len(event)>5) & (event[0:5] == 'image') & ('change' not in event):
             event_times = session.filtered_stimulus\
                 .query('image_index == {}'.format(int(event[-1])))['start_time'].values
-        elif (len(event)>5) & (event[0:5] == 'image') & ('change' in event):
+        elif (len(event)>5) & ('image' in event) & ('hit' in event):
+            event_times = session.filtered_stimulus\
+                .query('is_change & rewarded & (image_index == {})'\
+                .format(int(event[-1])),engine='python')['start_time'].values
+            event_times = event_times[~np.isnan(event_times)]
+            num_rewards = len(session.rewards\
+                .query('(timestamps > @start_time)&(timestamps <@end_time)'))
+            if (num_rewards < 5) or (not run_params['active']):
+                raise Exception('\tTrial type regressors arent defined for passive sessions'+\
+                    ' (sessions with less than 5 rewards)')
+        elif (len(event)>5) & ('image' in event) & ('miss' in event):
+            event_times = session.filtered_stimulus\
+                .query('is_change & ~rewarded & (image_index == {})'\
+                .format(int(event[-1])),engine='python')['start_time'].values
+            event_times = event_times[~np.isnan(event_times)]
+            num_rewards = len(session.rewards\
+                .query('(timestamps > @start_time)&(timestamps <@end_time)'))
+            if (num_rewards < 5) or (not run_params['active']):
+                raise Exception('\tTrial type regressors arent defined for passive sessions'+\
+                    ' (sessions with less than 5 rewards)')
+        elif (len(event)>5) & ('image' in event) & ('passive_change' in event):
+            num_rewards = len(session.rewards\
+                .query('(timestamps > @start_time)&(timestamps <@end_time)'))
+            if (run_params['active']) or (num_rewards > 5): 
+                raise Exception('\tPassive change image{} kernel cant be added to active sessions'.format(int(event[-1])))      
             event_times = session.filtered_stimulus\
                 .query('is_change & (image_index == {})'\
-                .format(int(event[-1])))['start_time'].values
+                .format(int(event[-1])),engine='python')['start_time'].values
+            event_times = event_times[~np.isnan(event_times)]
         else:
             raise Exception('\tCould not resolve kernel label')
 
