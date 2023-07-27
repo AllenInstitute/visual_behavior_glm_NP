@@ -364,7 +364,9 @@ def log_results_to_mongo(glm,insert_many=True):
         if insert_many:
             entries = df.to_dict(orient='records')
             entries = [db.clean_and_timestamp(entry) for entry in entries]
-            coll.update_many(entries)
+            key= {'ecephys_session_id':glm.ecephys_session_id,'glm_version':glm.version}
+            coll.delete_many(db.simplify_entry(key))
+            coll.insert_many(entries)
         else:
             for idx,row in df.iterrows():
                 entry = row.to_dict()
@@ -1340,6 +1342,7 @@ def inventory_glm_version(glm_version):
     # Get GLM results
     glm_results = retrieve_results(
         search_dict = {'glm_version': glm_version},
+        results_type='summary',
         return_list = ['ecephys_session_id', 'unit_id'],
         merge_in_experiment_metadata=False
     )
