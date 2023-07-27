@@ -11,6 +11,13 @@ from allensdk.brain_observatory.behavior.behavior_project_cache import \
     VisualBehaviorNeuropixelsProjectCache
 
 OUTPUT_DIR_BASE ='/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
+'''
+    102, 25ms, old mongo
+    102_m, 25ms, new mongo
+    103: shorter hit/miss/omission kernels
+    104: shorter behavioral kernels
+    105: image specific change kernels
+'''
 
 def get_versions(vrange=[100,110]):
     versions = os.listdir(OUTPUT_DIR_BASE)
