@@ -96,7 +96,7 @@ def figure_dump(version, run_params, results, results_pivoted, weights_df):
     stats = gvt.var_explained_by_experience(results_pivoted, run_params,savefig=True)
     stats = gvt.plot_dropout_summary_population(results, run_params,savefig=True)
     dropouts = ['all-images','omissions','behavioral','pupil','running','licks',
-        'task','hits','misses','shared_image','non_shared_image']
+        'task','hits','misses','shared_images','non_shared_images']
     for d in dropouts:
         stats = gvt.plot_dropout_summary_by_area(results, run_params,d,savefig=True)
     closeall()
@@ -114,6 +114,10 @@ def figure_dump(version, run_params, results, results_pivoted, weights_df):
             closeall()
 
     for k in kernels:
+        gvt.kernel_evaluation(weights_df, run_params, k,session_filter=['Familiar'], 
+            save_results=True)
+        gvt.kernel_evaluation(weights_df, run_params, k,session_filter=['Novel'], 
+            save_results=True)
         for a in areas:
             try:
                 gvt.kernel_evaluation(weights_df, run_params, k,session_filter=['Familiar'], 
