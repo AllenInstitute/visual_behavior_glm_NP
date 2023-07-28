@@ -2562,7 +2562,6 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         ncells={
             'exc':np.shape(slc)[1],
             }
-        print('here')
         ####zlims = plot_kernel_heatmap(weights_sorted,time_vec, kernel, run_params,ncells,session_filter=session_filter,savefig=save_results)
         #zlims_test = plot_kernel_heatmap_with_dropout(vip_table, sst_table, slc_table,time_vec, kernel, run_params,ncells,session_filter=session_filter)
     else:
@@ -2612,7 +2611,6 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         ncells_f={
             'exc':np.shape(slc_f)[1],
             }
-        print('here')
         #zlims = plot_kernel_heatmap(weights_sorted_f,time_vec, kernel, run_params,ncells_f,extra='full_model',zlims=zlims,session_filter=session_filter,savefig=save_results) 
     else:
         # For each dropout, plot score
@@ -2659,7 +2657,6 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         ncells_df={
             'exc':np.shape(slc_df)[1],
             }
-        print('here')
         #zlims = plot_kernel_heatmap(weights_sorted_df,time_vec, kernel, run_params,ncells_df,extra='dropout',zlims=None,session_filter=session_filter,savefig=save_results)
         #zlims_test = plot_kernel_heatmap_with_dropout(vip_table_df, sst_table_df, slc_table_df,time_vec, kernel, run_params,ncells_df,session_filter=session_filter,zlims=zlims,extra='dropout',savefig=save_results)
 
