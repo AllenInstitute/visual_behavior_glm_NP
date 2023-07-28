@@ -2037,7 +2037,7 @@ def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, dr
     filename = os.path.join(run_params['fig_kernels_dir'],kernel,kernel+'_comparison_by_experience'+filter_string+'.png')
 
     # Set up time vectors.
-    if kernel in ['preferred_image', 'all-images','shared_image','non_shared_image','shared_image_corrected','non_shared_image_corrected']:
+    if kernel in ['preferred_image', 'all-images','shared_images','non_shared_images','shared_image_corrected','non_shared_image_corrected']:
         run_params['kernels'][kernel] = run_params['kernels']['image0'].copy()
     if kernel == 'all-omissions':
         run_params['kernels'][kernel] = run_params['kernels']['omissions'].copy()
@@ -2334,7 +2334,7 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         threshold = 0.005
 
     # Set up time vectors.
-    if kernel in ['preferred_image', 'all-images','shared_image','non_shared_image']:
+    if kernel in ['preferred_image', 'all-images','shared_images','non_shared_images']:
         run_params['kernels'][kernel] = run_params['kernels']['image0'].copy()
     if kernel == 'all-omissions':
         run_params['kernels'][kernel] = run_params['kernels']['omissions'].copy()
@@ -4420,7 +4420,7 @@ def plot_dropout_individual_population(results, run_params,ax=None,palette=None,
 def plot_dropout_summary_by_area(results, run_params,dropout='all-images',
     ax=None,palette=None,add_median=True,include_zero_cells=True,add_title=False,
     dropout_cleaning_threshold=None, exclusion_threshold=None,
-    savefig=False,sort_order='coding',min_cells=100,merged=True): 
+    savefig=False,sort_order='coding',min_cells=100,merged=False): 
     '''
         Makes a bar plot that shows the population dropout summary by area 
         palette , color palette to use. If None, uses gvt.project_colors()

@@ -232,7 +232,7 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,
     # Make sub-directories for figure kernels
     for k in kernels:
         os.mkdir(fig_kernels_dir+'/'+k)
-    extra_kernels=['all-images','preferred_image','shared_image','non_shared_image']
+    extra_kernels=['all-images','preferred_image','shared_images','non_shared_images']
     for k in extra_kernels:
         os.mkdir(fig_kernels_dir+'/'+k)
 
