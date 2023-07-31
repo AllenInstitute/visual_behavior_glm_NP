@@ -2259,7 +2259,7 @@ def get_time_vec(kernel, run_params):
         run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],
         run_params['spike_bin_width'])
     time_vec = np.round(time_vec,3) 
-    if 'image' in kernel:
+    if ('image' in kernel) & ('_image' not in kernel):
         time_vec = time_vec[:-1]
     if ('omissions' == kernel) & ('post-omissions' in run_params['kernels']):
         time_vec = time_vec[:-1]
@@ -2269,8 +2269,10 @@ def get_time_vec(kernel, run_params):
         time_vec = time_vec[:-1]
     if ('passive_change' == kernel) & ('post-passive_change' in run_params['kernels']):
         time_vec = time_vec[:-1]
-    
-    if kernel in ['hits','misses','omissions','passive_change']:   
+
+    if (kernel in ['hits','misses','omissions','passive_change']) or\
+        ('hits_image' in kernel) or ('misses_image' in kernel) or \
+        ('passive_change_image' in kernel):   
         timesteps_per_stimulus = int(.75/run_params['spike_bin_width'] - 1)
         i = 1
         while i*timesteps_per_stimulus < len(time_vec):
