@@ -85,12 +85,42 @@ if False:
     gvt.plot_kernel_comparison(weights_df, run_params, 'non_shared_image')
     gvt.plot_kernel_comparison_shared_images(weights_df,run_params)
 
-def get_analysis_dfs(version):
+def get_analysis_dfs(version,save=True):
     run_params = glm_params.load_run_json(version)
     results = gat.get_summary_results(version)
     results_pivoted = gat.get_pivoted_results(results)
     weights_df = gat.get_weights_df(version, results_pivoted)
+    
+    if save:
+        OUTPUT_DIR_BASE = r'//allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
+        r_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(version), 'results.pkl')
+        rp_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(version), 'results_pivoted.pkl')
+        weights_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(version), 'weights_df.pkl')
+        results.to_pickle(r_filename)
+        results_pivoted.to_pickle(rp_filename)
+        weights_df.to_pickle(weights_filename)
     return run_params, results, results_pivoted, weights_df
+
+def load_analysis_dfs(VERSION):
+    OUTPUT_DIR_BASE = r'//allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
+    r_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(VERSION), 'results.pkl')
+    rp_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(VERSION), 'results_pivoted.pkl')
+    weights_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(VERSION), 'weights_df.pkl')
+
+    print('loading run_params')
+    run_params = glm_params.load_run_json(VERSION) 
+
+    print('loading results df')
+    results = pd.read_pickle(r_filename)
+
+    print('loading results_pivoted df')
+    results_pivoted = pd.read_pickle(rp_filename)
+
+    print('loading weights_df')
+    weights_df = pd.read_pickle(weights_filename)
+    return run_params, results, results_pivoted, weights_df
+
+
 
 def figure_dump(version, run_params, results, results_pivoted, weights_df,plot_areas=True):
     stats = gvt.var_explained_by_experience(results_pivoted, run_params,savefig=True)
@@ -122,6 +152,7 @@ def figure_dump(version, run_params, results, results_pivoted, weights_df,plot_a
                 save_results=True)
             gvt.kernel_evaluation(weights_df, run_params, k,session_filter=['Novel'], 
                 save_results=True)
+            gvt.kernel_evaluation(weights_df, run_params, k,save_results=True)
             if plot_areas:
                 for a in areas:
                     try:

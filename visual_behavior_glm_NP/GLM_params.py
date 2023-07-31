@@ -18,6 +18,9 @@ OUTPUT_DIR_BASE ='/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys
     104: shorter behavioral kernels
     105: image specific change kernels
     106: omission/hit/miss -> 1.5s
+    107: 106 had a bug, repeating, but with 2s behavior
+    108: 107 comparison with non-specific change kernels
+    109: 108 comparison with 1s behavior
 
 '''
 
@@ -35,12 +38,12 @@ def get_versions(vrange=[100,110]):
 def define_kernels():
     kernels = {
         'intercept':    {'event':'intercept',   'type':'continuous',    'length':0,     'offset':0,     'num_weights':None, 'dropout':True, 'text': 'constant value'},
-        #'hits':         {'event':'hit',         'type':'discrete',      'length':1.5,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'lick to image change'},
-        #'misses':       {'event':'miss',        'type':'discrete',      'length':1.5,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'no lick to image change'},
-        #'passive_change':   {'event':'passive_change','type':'discrete','length':1.5,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'passive session image change'},
-        'each-image_change':{'event':'image_change','type':'discrete',  'length':1.5,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'passive session image change'},
+        'hits':         {'event':'hit',         'type':'discrete',      'length':1.5,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'lick to image change'},
+        'misses':       {'event':'miss',        'type':'discrete',      'length':1.5,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'no lick to image change'},
+        'passive_change':   {'event':'passive_change','type':'discrete','length':1.5,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'passive session image change'},
+        #'each-image_change':{'event':'image_change','type':'discrete',  'length':1.5,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'passive session image change'},
         'omissions':        {'event':'omissions',   'type':'discrete',  'length':1.5,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'image was omitted'},
-        'each-image':   {'event':'each-image',  'type':'discrete',      'length':0.75,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'image presentation'},
+        'each-image':   {'event':'each-image',  'type':'discrete',      'length':0.75,  'offset':0,   'num_weights':None, 'dropout':True, 'text': 'image presentation'},
         'running':      {'event':'running',     'type':'continuous',    'length':1,     'offset':-0.5,  'num_weights':None, 'dropout':True, 'text': 'normalized running speed'},
         'pupil':        {'event':'pupil',       'type':'continuous',    'length':1,     'offset':-0.5,  'num_weights':None, 'dropout':True, 'text': 'Z-scored pupil diameter'},
         'licks':        {'event':'licks',       'type':'discrete',      'length':1,     'offset':-0.5,  'num_weights':None, 'dropout':True, 'text': 'mouse lick'},
