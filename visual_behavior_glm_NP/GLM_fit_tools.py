@@ -52,15 +52,15 @@ def load_fit_experiment(ecephys_session_id, run_params):
         kernels_to_limit_per_image_cycle.append('hits')
         kernels_to_limit_per_image_cycle.append('misses')
         kernels_to_limit_per_image_cycle.append('passive_change')
-    if 'hits_image0' in run_params['kernels']:
-        for i in range(0,8):
-            kernels_to_limit_per_image_cycle.append('hits_image{}'.format(i))
-            kernels_to_limit_per_image_cycle.append('misses_image{}'.format(i))
-            kernels_to_limit_per_image_cycle.append('passive_change_image{}'.format(i))
     for k in kernels_to_limit_per_image_cycle:
         if k in run_params['kernels']:
             run_params['kernels'][k]['num_weights'] = fit['timesteps_per_stimulus']    
     kernels_with_image_cycles = ['hits','misses','passive_change','omissions']
+    if 'hits_image0' in run_params['kernels']:
+        for i in range(0,8):
+            kernels_with_image_cycles.append('hits_image{}'.format(i))
+            kernels_with_image_cycles.append('misses_image{}'.format(i))
+            kernels_with_image_cycles.append('passive_change_image{}'.format(i))
     for k in kernels_with_image_cycles:
         if k in run_params['kernels']:
             num_cycles = int(np.floor(run_params['kernels'][k]['length']/.75))
@@ -1120,15 +1120,15 @@ def establish_ephys_timebins(fit, session, run_params):
         kernels_to_limit_per_image_cycle.append('hits')
         kernels_to_limit_per_image_cycle.append('misses')
         kernels_to_limit_per_image_cycle.append('passive_change')
-    if 'hits_image0' in run_params['kernels']:
-        for i in range(0,8):
-            kernels_to_limit_per_image_cycle.append('hits_image{}'.format(i))
-            kernels_to_limit_per_image_cycle.append('misses_image{}'.format(i))
-            kernels_to_limit_per_image_cycle.append('passive_change_image{}'.format(i))
     for k in kernels_to_limit_per_image_cycle:
         if k in run_params['kernels']:
             run_params['kernels'][k]['num_weights'] = fit['timesteps_per_stimulus']    
     kernels_with_image_cycles = ['hits','misses','passive_change','omissions']
+    if 'hits_image0' in run_params['kernels']:
+        for i in range(0,8):
+            kernels_with_image_cycles.append('hits_image{}'.format(i))
+            kernels_with_image_cycles.append('misses_image{}'.format(i))
+            kernels_with_image_cycles.append('passive_change_image{}'.format(i))
     for k in kernels_with_image_cycles:
         if k in run_params['kernels']:
             num_cycles = int(np.floor(run_params['kernels'][k]['length']/.75))
