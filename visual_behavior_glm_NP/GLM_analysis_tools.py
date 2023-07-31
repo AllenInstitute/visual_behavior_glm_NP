@@ -912,6 +912,37 @@ def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=
         x['image6_weights'],
         x['image7_weights']
         ],axis=0),axis=1)
+    if 'hits_image0_weights' in weights_df:
+        weights_df['all_hits_weights'] = weights_df.apply(lambda x: np.mean([
+            x['hits_image0_weights'],
+            x['hits_image1_weights'],
+            x['hits_image2_weights'],
+            x['hits_image3_weights'],       
+            x['hits_image4_weights'],
+            x['hits_image5_weights'],
+            x['hits_image6_weights'],
+            x['hits_image7_weights']
+            ],axis=0),axis=1)       
+        weights_df['all_misses_weights'] = weights_df.apply(lambda x: np.mean([
+            x['misses_image0_weights'],
+            x['misses_image1_weights'],
+            x['misses_image2_weights'],
+            x['misses_image3_weights'],       
+            x['misses_image4_weights'],
+            x['misses_image5_weights'],
+            x['misses_image6_weights'],
+            x['misses_image7_weights']
+            ],axis=0),axis=1)      
+        weights_df['all_passive_change_weights'] = weights_df.apply(lambda x: np.mean([
+            x['passive_change_image0_weights'],
+            x['passive_change_image1_weights'],
+            x['passive_change_image2_weights'],
+            x['passive_change_image3_weights'],       
+            x['passive_change_image4_weights'],
+            x['passive_change_image5_weights'],
+            x['passive_change_image6_weights'],
+            x['passive_change_image7_weights']
+            ],axis=0),axis=1)       
 
     # Compute preferred image kernel
     weights_df['preferred_image_weights'] = weights_df.apply(lambda x: compute_preferred_kernel([

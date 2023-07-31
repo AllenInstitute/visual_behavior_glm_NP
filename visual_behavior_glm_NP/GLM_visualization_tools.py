@@ -2261,6 +2261,8 @@ def get_time_vec(kernel, run_params):
     time_vec = np.round(time_vec,3) 
     if ('image' in kernel) & ('_image' not in kernel):
         time_vec = time_vec[:-1]
+    if ('shared_image' in kernel):
+        time_vec = time_vec[:-1]
     if ('omissions' == kernel) & ('post-omissions' in run_params['kernels']):
         time_vec = time_vec[:-1]
     if ('hits' == kernel) & ('post-hits' in run_params['kernels']):
