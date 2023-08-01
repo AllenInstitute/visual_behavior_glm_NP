@@ -11,6 +11,18 @@ from allensdk.brain_observatory.behavior.behavior_project_cache import \
     VisualBehaviorNeuropixelsProjectCache
 
 OUTPUT_DIR_BASE ='/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
+'''
+    102, 25ms, old mongo
+    102_m, 25ms, new mongo
+    103: shorter hit/miss/omission kernels
+    104: shorter behavioral kernels
+    105: image specific change kernels
+    106: omission/hit/miss -> 1.5s
+    107: 106 had a bug, repeating, but with 2s behavior
+    108: 107 comparison with non-specific change kernels
+    109: 108 comparison with 1s behavior
+
+'''
 
 def get_versions(vrange=[100,110]):
     versions = os.listdir(OUTPUT_DIR_BASE)
@@ -26,14 +38,15 @@ def get_versions(vrange=[100,110]):
 def define_kernels():
     kernels = {
         'intercept':    {'event':'intercept',   'type':'continuous',    'length':0,     'offset':0,     'num_weights':None, 'dropout':True, 'text': 'constant value'},
-        'hits':         {'event':'hit',         'type':'discrete',      'length':2.25,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'lick to image change'},
-        'misses':       {'event':'miss',        'type':'discrete',      'length':2.25,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'no lick to image change'},
-        'passive_change':   {'event':'passive_change','type':'discrete','length':2.25,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'passive session image change'},
-        'omissions':        {'event':'omissions',   'type':'discrete',  'length':3,     'offset':0,     'num_weights':None, 'dropout':True, 'text': 'image was omitted'},
-        'each-image':   {'event':'each-image',  'type':'discrete',      'length':0.75,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'image presentation'},
-        'running':      {'event':'running',     'type':'continuous',    'length':2,     'offset':-1,    'num_weights':None, 'dropout':True, 'text': 'normalized running speed'},
-        'pupil':        {'event':'pupil',       'type':'continuous',    'length':2,     'offset':-1,    'num_weights':None, 'dropout':True, 'text': 'Z-scored pupil diameter'},
-        'licks':        {'event':'licks',       'type':'discrete',      'length':2,     'offset':-1,    'num_weights':None, 'dropout':True, 'text': 'mouse lick'},
+        'hits':         {'event':'hit',         'type':'discrete',      'length':1.5,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'lick to image change'},
+        'misses':       {'event':'miss',        'type':'discrete',      'length':1.5,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'no lick to image change'},
+        'passive_change':   {'event':'passive_change','type':'discrete','length':1.5,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'passive session image change'},
+        #'each-image_change':{'event':'image_change','type':'discrete',  'length':1.5,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'passive session image change'},
+        'omissions':        {'event':'omissions',   'type':'discrete',  'length':1.5,  'offset':0,     'num_weights':None, 'dropout':True, 'text': 'image was omitted'},
+        'each-image':   {'event':'each-image',  'type':'discrete',      'length':0.75,  'offset':0,   'num_weights':None, 'dropout':True, 'text': 'image presentation'},
+        'running':      {'event':'running',     'type':'continuous',    'length':1,     'offset':-0.5,  'num_weights':None, 'dropout':True, 'text': 'normalized running speed'},
+        'pupil':        {'event':'pupil',       'type':'continuous',    'length':1,     'offset':-0.5,  'num_weights':None, 'dropout':True, 'text': 'Z-scored pupil diameter'},
+        'licks':        {'event':'licks',       'type':'discrete',      'length':1,     'offset':-0.5,  'num_weights':None, 'dropout':True, 'text': 'mouse lick'},
     }
 
     return kernels
@@ -224,7 +237,7 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,
     # Make sub-directories for figure kernels
     for k in kernels:
         os.mkdir(fig_kernels_dir+'/'+k)
-    extra_kernels=['all-images','preferred_image','shared_image','non_shared_image']
+    extra_kernels=['all-images','preferred_image','shared_images','non_shared_images']
     for k in extra_kernels:
         os.mkdir(fig_kernels_dir+'/'+k)
 
@@ -283,8 +296,12 @@ def process_kernels(kernels):
     if 'each-image_change' in kernels:
         specs = kernels.pop('each-image_change')
         for index, val in enumerate(range(0,8)):
-            kernels['image_change'+str(val)] = copy(specs)
-            kernels['image_change'+str(val)]['event'] = 'image_change'+str(val)
+            kernels['hits_image'+str(val)] = copy(specs)
+            kernels['hits_image'+str(val)]['event'] = 'hit_image'+str(val)
+            kernels['misses_image'+str(val)] = copy(specs)
+            kernels['misses_image'+str(val)]['event'] = 'miss_image'+str(val)
+            kernels['passive_change_image'+str(val)] = copy(specs)
+            kernels['passive_change_image'+str(val)]['event'] = 'passive_change_image'+str(val)
     if 'beh_model' in kernels:
         specs = kernels.pop('beh_model')
         weight_names = ['bias','task0','omissions1','timing1D']
@@ -313,8 +330,10 @@ def define_dropouts(kernels,run_params):
 
         # Define the nested_models
         dropout_definitions={
-            'all-images':           ['image0','image1','image2','image3','image4','image5','image6','image7'],
-            'task':                 ['hits','misses','passive_change','post-hits','post-misses','post-passive_change'],
+            'all-images':           ['image0','image1','image2','image3',
+                                    'image4','image5','image6','image7'],
+            'task':                 ['hits','misses','passive_change','post-hits',
+                                    'post-misses','post-passive_change'],
             'behavioral':           ['running','pupil','licks'],
             }
         
@@ -324,10 +343,25 @@ def define_dropouts(kernels,run_params):
             dropout_definitions['all-hits']=            ['hits','post-hits']
             dropout_definitions['all-misses']=          ['misses','post-misses']
             dropout_definitions['all-passive_change']=  ['passive_change','post-passive_change']
-            dropout_definitions['post-task']=           ['post-hits','post-misses','post-passive_change']
+            dropout_definitions['post-task']=           ['post-hits','post-misses',
+                                                        'post-passive_change']
             dropout_definitions['task']=                ['hits','misses','passive_change']
-            dropout_definitions['all-task']=            ['hits','misses','passive_change','post-hits','post-misses','post-passive_change']
-        
+            dropout_definitions['all-task']=            ['hits','misses','passive_change',
+                                                    'post-hits','post-misses','post-passive_change']
+        if 'hits_image0' in kernels:
+            dropout_definitions['hits'] = ['hits_image0','hits_image1','hits_image2',
+                'hits_image3','hits_image4','hits_image5','hits_image6','hits_image7']
+            dropout_definitions['misses'] = ['misses_image0','misses_image1','misses_image2',
+                'misses_image3','misses_image4','misses_image5','misses_image6','misses_image7']
+            dropout_definitions['passive_change'] = ['passive_change_image0',
+                'passive_change_image1','passive_change_image2','passive_change_image3',
+                'passive_change_image4','passive_change_image5','passive_change_image6',
+                'passive_change_image7']
+            dropout_definitions['task'] = []
+            dropout_definitions['task'].extend(dropout_definitions['hits'])
+            dropout_definitions['task'].extend(dropout_definitions['misses'])
+            dropout_definitions['task'].extend(dropout_definitions['passive_change'])
+ 
         # For each nested model, move the appropriate kernels to the dropped_kernel list
         for dropout_name in dropout_definitions:
             dropouts = set_up_dropouts(dropouts, kernels, dropout_name, dropout_definitions[dropout_name])

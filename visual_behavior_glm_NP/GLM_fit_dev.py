@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -50,9 +51,7 @@ if False:
 
     # Merge active/passive
     #df_combined = gat.merge_active_passive(df_active, df_passive)
-    results_c = gat.merge_active_passive(results_a, results_p)
-    results_pivoted_c = gat.merge_active_passive(results_pivoted_a, results_pivoted_p)
-    weights_df_c = gat.merge_active_passive(weights_df_a, weights_df_p)
+    run_params, results_c, results_pivoted_c, weights_df_c = gfd.get_analysis_dfs(root_version)
     stats = gvt.var_explained_by_experience(results_pivoted_c, run_params,merged=True) 
     stats = gvt.plot_dropout_summary_population(results_c, run_params,merged=True) 
     stats = gvt.plot_dropout_summary_by_area(results_c, run_params, 'all-images',merged=True)
@@ -85,45 +84,131 @@ if False:
     gvt.plot_kernel_comparison(weights_df, run_params, 'non_shared_image')
     gvt.plot_kernel_comparison_shared_images(weights_df,run_params)
 
-def get_analysis_dfs(version):
+
+def get_active_passive_dfs(root_version,save=True):
+    version_a = root_version+'_active'
+    version_p = root_version+'_passive'
+
+    run_params_a, results_a,results_pivoted_a, weights_df_a = load_analysis_dfs(version_a)
+    run_params_p, results_p,results_pivoted_p, weights_df_p = load_analysis_dfs(version_p)
+
+    results_c = gat.merge_active_passive(results_a, results_p)
+    results_pivoted_c = gat.merge_active_passive(results_pivoted_a, results_pivoted_p)
+    weights_df_c = gat.merge_active_passive(weights_df_a, weights_df_p)
+    if save:
+        OUTPUT_DIR_BASE = r'//allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
+        r_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(version_a), 'combined_results.pkl')
+        rp_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(version_a), 'combined_results_pivoted.pkl')
+        weights_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(version_a), 'combined_weights_df.pkl')
+        results.to_pickle(r_filename)
+        results_pivoted.to_pickle(rp_filename)
+        weights_df.to_pickle(weights_filename)
+    
+    return results_c, results_pivoted_c, weights_df_c
+
+
+def load_active_passive_dfs(root_version): 
+    VERSION = root_version+'_active'
+    OUTPUT_DIR_BASE = r'//allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
+    r_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(VERSION), 'combined_results.pkl')
+    rp_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(VERSION), 'combined_results_pivoted.pkl')
+    weights_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(VERSION), 'combined_weights_df.pkl')
+
+    print('loading run_params')
+    run_params = glm_params.load_run_json(VERSION) 
+
+    print('loading results df')
+    results = pd.read_pickle(r_filename)
+
+    print('loading results_pivoted df')
+    results_pivoted = pd.read_pickle(rp_filename)
+
+    print('loading weights_df')
+    weights_df = pd.read_pickle(weights_filename)
+    return run_params, results, results_pivoted, weights_df
+
+
+def get_analysis_dfs(version,save=True):
     run_params = glm_params.load_run_json(version)
     results = gat.get_summary_results(version)
     results_pivoted = gat.get_pivoted_results(results)
     weights_df = gat.get_weights_df(version, results_pivoted)
+    
+    if save:
+        print('Saving to pickle files, next time use gfd.load_analysis_dfs')
+        OUTPUT_DIR_BASE = r'//allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
+        r_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(version), 'results.pkl')
+        rp_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(version), 'results_pivoted.pkl')
+        weights_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(version), 'weights_df.pkl')
+        results.to_pickle(r_filename)
+        results_pivoted.to_pickle(rp_filename)
+        weights_df.to_pickle(weights_filename)
     return run_params, results, results_pivoted, weights_df
 
-def figure_dump(version, run_params, results, results_pivoted, weights_df):
+
+
+def load_analysis_dfs(VERSION):
+    OUTPUT_DIR_BASE = r'//allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
+    r_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(VERSION), 'results.pkl')
+    rp_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(VERSION), 'results_pivoted.pkl')
+    weights_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(VERSION), 'weights_df.pkl')
+
+    print('loading run_params')
+    run_params = glm_params.load_run_json(VERSION) 
+
+    print('loading results df')
+    results = pd.read_pickle(r_filename)
+
+    print('loading results_pivoted df')
+    results_pivoted = pd.read_pickle(rp_filename)
+
+    print('loading weights_df')
+    weights_df = pd.read_pickle(weights_filename)
+    return run_params, results, results_pivoted, weights_df
+
+
+
+def figure_dump(version, run_params, results, results_pivoted, weights_df,plot_areas=True):
     stats = gvt.var_explained_by_experience(results_pivoted, run_params,savefig=True)
     stats = gvt.plot_dropout_summary_population(results, run_params,savefig=True)
     dropouts = ['all-images','omissions','behavioral','pupil','running','licks',
-        'task','hits','misses']
+        'task','hits','misses','shared_images','non_shared_images']
     for d in dropouts:
         stats = gvt.plot_dropout_summary_by_area(results, run_params,d,savefig=True)
-    closeall()
+        closeall()
 
     kernels = ['omissions','all-images','hits','misses','licks','running','pupil',
-        'shared_image','non_shared_image']
+        'shared_images','non_shared_images']
     areas = weights_df['structure_acronym'].unique()
     for k in kernels:
-        gvt.plot_kernel_comparison(weights_df, run_params, k)
-        for a in areas:
-            try:
-                gvt.plot_kernel_comparison(weights_df, run_params, k,area_filter=[a])
-            except:
-                pass
-            closeall()
+        if k in run_params['kernels']:
+            gvt.plot_kernel_comparison(weights_df, run_params, k)
+            if plot_areas:
+                for a in areas:
+                    try:
+                        gvt.plot_kernel_comparison(weights_df, run_params, k,area_filter=[a])
+                    except:
+                        pass
+                    closeall()
+        closeall()
 
     for k in kernels:
-        for a in areas:
-            try:
-                gvt.kernel_evaluation(weights_df, run_params, k,session_filter=['Familiar'], 
-                    area_filter=[a],save_results=True)
-                gvt.kernel_evaluation(weights_df, run_params, k,session_filter=['Novel'], 
-                    area_filter=[a],save_results=True)
-            except:
-                pass
-            closeall()
-
-
+        if k in run_params['kernels']:
+            gvt.kernel_evaluation(weights_df, run_params, k,session_filter=['Familiar'], 
+                save_results=True)
+            gvt.kernel_evaluation(weights_df, run_params, k,session_filter=['Novel'], 
+                save_results=True)
+            gvt.kernel_evaluation(weights_df, run_params, k,save_results=True)
+            if plot_areas:
+                for a in areas:
+                    try:
+                        gvt.kernel_evaluation(weights_df, run_params, k,session_filter=['Familiar'], 
+                            area_filter=[a],save_results=True)
+                        gvt.kernel_evaluation(weights_df, run_params, k,session_filter=['Novel'], 
+                            area_filter=[a],save_results=True)
+                    except:
+                        pass
+                    closeall()
+        closeall()
 
  

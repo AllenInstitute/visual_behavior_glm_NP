@@ -902,6 +902,7 @@ def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=
 
     print('Computing average kernels') 
     # Compute generic image kernel
+    print('all image kernel')
     weights_df['all-images_weights'] = weights_df.apply(lambda x: np.mean([
         x['image0_weights'],
         x['image1_weights'],
@@ -914,6 +915,7 @@ def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=
         ],axis=0),axis=1)
 
     # Compute preferred image kernel
+    print('preferred image kernel')
     weights_df['preferred_image_weights'] = weights_df.apply(lambda x: compute_preferred_kernel([
         x['image0_weights'],
         x['image1_weights'],
@@ -926,7 +928,8 @@ def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=
         ]),axis=1) 
 
     # compute share_image kernel
-    weights_df['shared_image_weights'] = weights_df.apply(lambda x: compute_shared_image_kernel(
+    print('shared image kernel')
+    weights_df['shared_images_weights'] = weights_df.apply(lambda x: compute_shared_image_kernel(
         x['image_set'],
         [x['image0_weights'],
         x['image1_weights'],
@@ -937,7 +940,8 @@ def build_weights_df(run_params,results_pivoted, cache_results=False,load_cache=
         x['image6_weights'],
         x['image7_weights']
         ]),axis=1)
-    weights_df['non_shared_image_weights'] = weights_df.apply(lambda x: \
+    print('non share image kernel')
+    weights_df['non_shared_images_weights'] = weights_df.apply(lambda x: \
         compute_non_shared_image_kernel(
         x['image_set'],
         [x['image0_weights'],

@@ -2037,7 +2037,7 @@ def plot_kernel_comparison(weights_df, run_params, kernel, save_results=True, dr
     filename = os.path.join(run_params['fig_kernels_dir'],kernel,kernel+'_comparison_by_experience'+filter_string+'.png')
 
     # Set up time vectors.
-    if kernel in ['preferred_image', 'all-images','shared_image','non_shared_image','shared_image_corrected','non_shared_image_corrected']:
+    if kernel in ['preferred_image', 'all-images','shared_images','non_shared_images','shared_image_corrected','non_shared_image_corrected']:
         run_params['kernels'][kernel] = run_params['kernels']['image0'].copy()
     if kernel == 'all-omissions':
         run_params['kernels'][kernel] = run_params['kernels']['omissions'].copy()
@@ -2259,7 +2259,9 @@ def get_time_vec(kernel, run_params):
         run_params['kernels'][kernel]['offset'] + run_params['kernels'][kernel]['length'],
         run_params['spike_bin_width'])
     time_vec = np.round(time_vec,3) 
-    if 'image' in kernel:
+    if ('image' in kernel) & ('_image' not in kernel):
+        time_vec = time_vec[:-1]
+    if ('shared_image' in kernel):
         time_vec = time_vec[:-1]
     if ('omissions' == kernel) & ('post-omissions' in run_params['kernels']):
         time_vec = time_vec[:-1]
@@ -2269,8 +2271,10 @@ def get_time_vec(kernel, run_params):
         time_vec = time_vec[:-1]
     if ('passive_change' == kernel) & ('post-passive_change' in run_params['kernels']):
         time_vec = time_vec[:-1]
-    
-    if kernel in ['hits','misses','omissions','passive_change']:   
+
+    if (kernel in ['hits','misses','omissions','passive_change']) or\
+        ('hits_image' in kernel) or ('misses_image' in kernel) or \
+        ('passive_change_image' in kernel):   
         timesteps_per_stimulus = int(.75/run_params['spike_bin_width'] - 1)
         i = 1
         while i*timesteps_per_stimulus < len(time_vec):
@@ -2334,7 +2338,7 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         threshold = 0.005
 
     # Set up time vectors.
-    if kernel in ['preferred_image', 'all-images','shared_image','non_shared_image']:
+    if kernel in ['preferred_image', 'all-images','shared_images','non_shared_images']:
         run_params['kernels'][kernel] = run_params['kernels']['image0'].copy()
     if kernel == 'all-omissions':
         run_params['kernels'][kernel] = run_params['kernels']['omissions'].copy()
@@ -2562,7 +2566,6 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         ncells={
             'exc':np.shape(slc)[1],
             }
-        print('here')
         ####zlims = plot_kernel_heatmap(weights_sorted,time_vec, kernel, run_params,ncells,session_filter=session_filter,savefig=save_results)
         #zlims_test = plot_kernel_heatmap_with_dropout(vip_table, sst_table, slc_table,time_vec, kernel, run_params,ncells,session_filter=session_filter)
     else:
@@ -2612,7 +2615,6 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         ncells_f={
             'exc':np.shape(slc_f)[1],
             }
-        print('here')
         #zlims = plot_kernel_heatmap(weights_sorted_f,time_vec, kernel, run_params,ncells_f,extra='full_model',zlims=zlims,session_filter=session_filter,savefig=save_results) 
     else:
         # For each dropout, plot score
@@ -2659,7 +2661,6 @@ def kernel_evaluation(weights_df, run_params, kernel, save_results=False, drop_t
         ncells_df={
             'exc':np.shape(slc_df)[1],
             }
-        print('here')
         #zlims = plot_kernel_heatmap(weights_sorted_df,time_vec, kernel, run_params,ncells_df,extra='dropout',zlims=None,session_filter=session_filter,savefig=save_results)
         #zlims_test = plot_kernel_heatmap_with_dropout(vip_table_df, sst_table_df, slc_table_df,time_vec, kernel, run_params,ncells_df,session_filter=session_filter,zlims=zlims,extra='dropout',savefig=save_results)
 
@@ -4420,7 +4421,7 @@ def plot_dropout_individual_population(results, run_params,ax=None,palette=None,
 def plot_dropout_summary_by_area(results, run_params,dropout='all-images',
     ax=None,palette=None,add_median=True,include_zero_cells=True,add_title=False,
     dropout_cleaning_threshold=None, exclusion_threshold=None,
-    savefig=False,sort_order='coding',min_cells=100,merged=True): 
+    savefig=False,sort_order='coding',min_cells=100,merged=False): 
     '''
         Makes a bar plot that shows the population dropout summary by area 
         palette , color palette to use. If None, uses gvt.project_colors()
