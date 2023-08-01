@@ -135,6 +135,7 @@ def get_analysis_dfs(version,save=True):
     weights_df = gat.get_weights_df(version, results_pivoted)
     
     if save:
+        print('Saving to pickle files, next time use gfd.load_analysis_dfs')
         OUTPUT_DIR_BASE = r'//allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
         r_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(version), 'results.pkl')
         rp_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(version), 'results_pivoted.pkl')
