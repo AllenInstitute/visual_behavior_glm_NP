@@ -1,4 +1,5 @@
 import os
+import time
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -89,33 +90,55 @@ def get_active_passive_dfs(root_version,save=True):
     version_a = root_version+'_active'
     version_p = root_version+'_passive'
 
+    print('Loading '+version_a)
     run_params_a, results_a,results_pivoted_a, weights_df_a = load_analysis_dfs(version_a)
+    print('\nLoading '+version_p)
     run_params_p, results_p,results_pivoted_p, weights_df_p = load_analysis_dfs(version_p)
 
+    print('\nmerging')
     results_c = gat.merge_active_passive(results_a, results_p)
     results_pivoted_c = gat.merge_active_passive(results_pivoted_a, results_pivoted_p)
     weights_df_c = gat.merge_active_passive(weights_df_a, weights_df_p)
+
+    del weights_df_a
+    del weights_df_p
+    del results_pivoted_a
+    del results_pivoted_p
+    del results_a
+    del results_p
+
     if save:
-        OUTPUT_DIR_BASE = r'//allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
-        r_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(version_a), 'combined_results.pkl')
-        rp_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(version_a), 'combined_results_pivoted.pkl')
-        weights_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(version_a), 'combined_weights_df.pkl')
-        results.to_pickle(r_filename)
-        results_pivoted.to_pickle(rp_filename)
-        weights_df.to_pickle(weights_filename)
-    
-    return results_c, results_pivoted_c, weights_df_c
+        print('saving')
+        filename = os.path.join(run_params_a['output_dir'],'passive_comparison')
+        r_filename = os.path.join(filename, 'combined_results.pkl')
+        rp_filename = os.path.join(filename, 'combined_results_pivoted.pkl')
+        weights_filename = os.path.join(filename, 'combined_weights_df.pkl')
+
+        # Make folder for active/passive comparison       
+        fig = os.path.join(filename,'figures')
+        if not os.path.isdir(filename):
+            os.mkdir(filename)    
+        if not os.path.isdir(fig):
+            os.mkdir(fig)    
+
+        results_c.to_pickle(r_filename)
+        del results_c
+        results_pivoted_c.to_pickle(rp_filename)
+        del results_pivoted_c
+        weights_df_c.to_pickle(weights_filename)
 
 
 def load_active_passive_dfs(root_version): 
     VERSION = root_version+'_active'
-    OUTPUT_DIR_BASE = r'//allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys/'
-    r_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(VERSION), 'combined_results.pkl')
-    rp_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(VERSION), 'combined_results_pivoted.pkl')
-    weights_filename = os.path.join(OUTPUT_DIR_BASE, 'v_'+str(VERSION), 'combined_weights_df.pkl')
 
     print('loading run_params')
     run_params = glm_params.load_run_json(VERSION) 
+    filename = os.path.join(run_params['output_dir'],'passive_comparison')
+    r_filename = os.path.join(filename, 'combined_results.pkl')
+    rp_filename = os.path.join(filename, 'combined_results_pivoted.pkl')
+    weights_filename = os.path.join(filename, 'combined_weights_df.pkl')
+    run_params['output_dir'] = filename
+    run_params['figure_dir'] = os.path.join(filename,'figures')
 
     print('loading results df')
     results = pd.read_pickle(r_filename)
@@ -178,11 +201,14 @@ def figure_dump(version, run_params, results, results_pivoted, weights_df,plot_a
         closeall()
 
     kernels = ['omissions','all-images','hits','misses','licks','running','pupil',
-        'shared_images','non_shared_images']
+        'shared_images','non_shared_images','all-images','preferred-image','passive_change']
     areas = weights_df['structure_acronym'].unique()
     for k in kernels:
         if k in run_params['kernels']:
-            gvt.plot_kernel_comparison(weights_df, run_params, k)
+            try:
+                gvt.plot_kernel_comparison(weights_df, run_params, k)
+            except:
+                pass
             if plot_areas:
                 for a in areas:
                     try:
@@ -190,15 +216,19 @@ def figure_dump(version, run_params, results, results_pivoted, weights_df,plot_a
                     except:
                         pass
                     closeall()
+                    time.sleep(5)
         closeall()
 
     for k in kernels:
         if k in run_params['kernels']:
-            gvt.kernel_evaluation(weights_df, run_params, k,session_filter=['Familiar'], 
-                save_results=True)
-            gvt.kernel_evaluation(weights_df, run_params, k,session_filter=['Novel'], 
-                save_results=True)
-            gvt.kernel_evaluation(weights_df, run_params, k,save_results=True)
+            try:
+                gvt.kernel_evaluation(weights_df, run_params, k,session_filter=['Familiar'], 
+                    save_results=True)
+                gvt.kernel_evaluation(weights_df, run_params, k,session_filter=['Novel'], 
+                    save_results=True)
+                gvt.kernel_evaluation(weights_df, run_params, k,save_results=True)
+            except:
+                pass
             if plot_areas:
                 for a in areas:
                     try:
@@ -209,6 +239,7 @@ def figure_dump(version, run_params, results, results_pivoted, weights_df,plot_a
                     except:
                         pass
                     closeall()
+                    time.sleep(5)
         closeall()
 
  
