@@ -4421,7 +4421,7 @@ def plot_dropout_individual_population(results, run_params,ax=None,palette=None,
 def plot_dropout_summary_by_area(results, run_params,dropout='all-images',
     ax=None,palette=None,add_median=True,include_zero_cells=True,add_title=False,
     dropout_cleaning_threshold=None, exclusion_threshold=None,
-    savefig=False,sort_order='coding',min_cells=100,merged=False): 
+    savefig=False,sort_order='coding',min_cells=100,merged=False,hue='experience_level'): 
     '''
         Makes a bar plot that shows the population dropout summary by area 
         palette , color palette to use. If None, uses gvt.project_colors()
@@ -4475,17 +4475,20 @@ def plot_dropout_summary_by_area(results, run_params,dropout='all-images',
     elif sort_order=='coding':
         area_order =data_to_plot.groupby('structure_acronym')['explained_variance'].mean().sort_values().index.values
 
-    if merged:
-        hue_order = ['Familiar_active','Familiar_passive','Novel_active','Novel_passive']
-    else:
-        hue_order = ['Familiar','Novel']      
+    if hue == 'experience_level':
+        if merged:
+            hue_order = ['Familiar_active','Familiar_passive','Novel_active','Novel_passive']
+        else:
+            hue_order = ['Familiar','Novel']      
+    elif hue == 'visual_strategy_session':
+        hue_order = [True, False]
 
     area_order = filter_area_by_num_cells(results, area_order,min_cells)
     sns.boxplot(
         data = data_to_plot,
         x='structure_acronym',
         y='explained_variance',
-        hue='experience_level',
+        hue=hue,
         order=area_order,
         hue_order=hue_order,
         fliersize=0,
