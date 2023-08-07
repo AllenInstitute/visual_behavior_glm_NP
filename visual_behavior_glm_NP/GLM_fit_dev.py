@@ -48,7 +48,7 @@ if False:
     weights_df = gat.get_weights_df(version, results_pivoted)
     
     # Get everything at once
-    run_params, results, results_pivoted, weights_df = gfd.get_analysis_dfs(version)
+    run_params, results, results_pivoted, weights_df = gfd.load_analysis_dfs(version)
 
     # Merge active/passive
     #df_combined = gat.merge_active_passive(df_active, df_passive)
@@ -57,6 +57,14 @@ if False:
     stats = gvt.plot_dropout_summary_population(results_c, run_params,merged=True) 
     stats = gvt.plot_dropout_summary_by_area(results_c, run_params, 'all-images',merged=True)
 
+    # Get Strategy information
+    # import licking_behavior_NP.psy_output_tools as po
+    # BEHAVIOR_VERSION = 100
+    # summary_df  = po.get_ophys_summary_table(BEHAVIOR_VERSION)
+    results = gat.add_behavior_session_metrics(results,summary_df)
+    results_pivoted = gat.add_behavior_session_metrics(results_pivoted,summary_df)
+    weights_df = gat.add_behavior_session_metrics(weights_df,summary_df)
+   
     # Evaluate model fit quality
     stats = gvt.var_explained_by_experience(results_pivoted, run_params)
   
