@@ -1303,7 +1303,7 @@ def clean_glm_dropout_scores(results_pivoted, run_params, in_session_numbers=Non
     return results_pivoted_var
           
 
-def build_inventory_table(vrange=[100,120],return_inventories=False):
+def build_inventory_table(vrange=[108,109],return_inventories=False):
     '''
         Builds a table of all available GLM versions in the supplied range, 
         and reports how many missing/fit experiments/rois in that version
