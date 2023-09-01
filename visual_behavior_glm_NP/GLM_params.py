@@ -43,9 +43,9 @@ def define_kernels():
         'passive_change':   {'event':'passive_change','type':'discrete','length':1.5,  'offset':0,   'num_weights':None, 'dropout':True, 'text': 'passive session image change'},
         'omissions':        {'event':'omissions',   'type':'discrete',  'length':1.5,  'offset':0,   'num_weights':None, 'dropout':True, 'text': 'image was omitted'},
         'each-image':   {'event':'each-image',  'type':'discrete',      'length':0.75, 'offset':0,   'num_weights':None, 'dropout':True, 'text': 'image presentation'},
-        'running':      {'event':'running',     'type':'continuous',    'length':2,    'offset':1,   'num_weights':None, 'dropout':True, 'text': 'normalized running speed'},
-        'pupil':        {'event':'pupil',       'type':'continuous',    'length':2,    'offset':1,   'num_weights':None, 'dropout':True, 'text': 'Z-scored pupil diameter'},
-        'licks':        {'event':'licks',       'type':'discrete',      'length':2,    'offset':1,   'num_weights':None, 'dropout':True, 'text': 'mouse lick'},
+        'running':      {'event':'running',     'type':'continuous',    'length':2,    'offset':-1,   'num_weights':None, 'dropout':True, 'text': 'normalized running speed'},
+        'pupil':        {'event':'pupil',       'type':'continuous',    'length':2,    'offset':-1,   'num_weights':None, 'dropout':True, 'text': 'Z-scored pupil diameter'},
+        'licks':        {'event':'licks',       'type':'discrete',      'length':2,    'offset':-1,   'num_weights':None, 'dropout':True, 'text': 'mouse lick'},
     }
 
     return kernels
