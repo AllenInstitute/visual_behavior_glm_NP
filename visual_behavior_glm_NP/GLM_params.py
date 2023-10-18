@@ -21,7 +21,7 @@ OUTPUT_DIR_BASE ='/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys
     107: 106 had a bug, repeating, but with 2s behavior
     108: 107 comparison with non-specific change kernels
     109: 108 comparison with 1s behavior
-
+    110, __ comparison with licking kernels
 '''
 
 def get_versions(vrange=[100,110]):
@@ -45,7 +45,8 @@ def define_kernels():
         'each-image':   {'event':'each-image',  'type':'discrete',      'length':0.75, 'offset':0,   'num_weights':None, 'dropout':True, 'text': 'image presentation'},
         'running':      {'event':'running',     'type':'continuous',    'length':2,    'offset':-1,   'num_weights':None, 'dropout':True, 'text': 'normalized running speed'},
         'pupil':        {'event':'pupil',       'type':'continuous',    'length':2,    'offset':-1,   'num_weights':None, 'dropout':True, 'text': 'Z-scored pupil diameter'},
-        'licks':        {'event':'licks',       'type':'discrete',      'length':2,    'offset':-1,   'num_weights':None, 'dropout':True, 'text': 'mouse lick'},
+        #'licks':        {'event':'licks',       'type':'discrete',      'length':2,    'offset':-1,   'num_weights':None, 'dropout':True, 'text': 'mouse lick'},
+        'lick_bouts':   {'event':'lick_bout_starts', 'type':'discrete', 'length':2,     'offset':-1,    'num_weights':None, 'dropout':True, 'text':'mouse lick bout start'}
     }
 
     return kernels
@@ -333,7 +334,7 @@ def define_dropouts(kernels,run_params):
                                     'image4','image5','image6','image7'],
             'task':                 ['hits','misses','passive_change','post-hits',
                                     'post-misses','post-passive_change'],
-            'behavioral':           ['running','pupil','licks'],
+            'behavioral':           ['running','pupil','licks','lick_bouts'],
             }
         
         if 'post-omissions' in kernels:

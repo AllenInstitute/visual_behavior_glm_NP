@@ -1560,6 +1560,19 @@ def add_discrete_kernel_by_label(kernel_name,design, run_params,session,fit):
             event_times = session.licks\
                 .query('(timestamps >= @start_time)&(timestamps<@end_time)')['timestamps'].values
             assert run_params['active'], "\tCannot add licks to passive session"
+        elif event == 'lick_bout_starts':
+            licks = session.licks
+            licks['pre_ILI'] = licks['timestamps'] - licks['timestamps'].shift(fill_value=-10)
+            licks['post_ILI'] = licks['timestamps'].shift(periods=-1, fill_value=5000) - licks['timestamps']
+            licks['bout_start'] = licks['pre_ILI'] > run_params['lick_bout_ILI']
+            licks['bout_end'] = licks['post_ILI'] > run_params['lick_bout_ILI']
+            event_times = licks.query('bout_start & (timestamps >=@start_time)&(timestamps < @end_time)')\
+                ['timestamps'].values
+            assert np.sum(licks['bout_start']) == np.sum(licks['bout_end']), \
+                "Lick bout splitting failed"
+            assert np.sum(licks['bout_start']) < len(licks), \
+                "More lick bouts than licks"
+            assert run_params['active'], "\tCannot add lick bouts to passive session"
         elif event == 'lick_bouts':
             licks = session.licks
             licks['pre_ILI'] = licks['timestamps'] - licks['timestamps'].shift(fill_value=-10)
