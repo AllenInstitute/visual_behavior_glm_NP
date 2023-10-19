@@ -21,7 +21,7 @@ OUTPUT_DIR_BASE ='/allen/programs/braintv/workgroups/nc-ophys/alex.piet/NP/ephys
     107: 106 had a bug, repeating, but with 2s behavior
     108: 107 comparison with non-specific change kernels
     109: 108 comparison with 1s behavior
-
+    110, __ comparison with licking kernels
 '''
 
 def get_versions(vrange=[100,110]):
@@ -45,7 +45,8 @@ def define_kernels():
         'each-image':   {'event':'each-image',  'type':'discrete',      'length':0.75, 'offset':0,   'num_weights':None, 'dropout':True, 'text': 'image presentation'},
         'running':      {'event':'running',     'type':'continuous',    'length':2,    'offset':-1,   'num_weights':None, 'dropout':True, 'text': 'normalized running speed'},
         'pupil':        {'event':'pupil',       'type':'continuous',    'length':2,    'offset':-1,   'num_weights':None, 'dropout':True, 'text': 'Z-scored pupil diameter'},
-        'licks':        {'event':'licks',       'type':'discrete',      'length':2,    'offset':-1,   'num_weights':None, 'dropout':True, 'text': 'mouse lick'},
+        #'licks':        {'event':'licks',       'type':'discrete',      'length':2,    'offset':-1,   'num_weights':None, 'dropout':True, 'text': 'mouse lick'},
+        'lick_bouts':   {'event':'lick_bout_starts', 'type':'discrete', 'length':2,     'offset':-1,    'num_weights':None, 'dropout':True, 'text':'mouse lick bout start'}
     }
 
     return kernels
@@ -222,7 +223,7 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,
         'image_kernel_overlap_tol':5,   # Number of timesteps image kernels are allowed to overlap during entire session.
         'dropout_threshold':0.005,      # Minimum variance explained by full model
         'version_type':'standard',      # Should be either 'production' (run everything), 'standard' (run standard dropouts), 'minimal' (just full model)
-        'active': False,                # Are we fitting the active behavior (True) or passive (False)
+        'active': True,                # Are we fitting the active behavior (True) or passive (False)
         'spike_bin_width':.025,         # Duration of spike bins in s. Must be cleanly divide 750ms
     } 
 
@@ -333,7 +334,7 @@ def define_dropouts(kernels,run_params):
                                     'image4','image5','image6','image7'],
             'task':                 ['hits','misses','passive_change','post-hits',
                                     'post-misses','post-passive_change'],
-            'behavioral':           ['running','pupil','licks'],
+            'behavioral':           ['running','pupil','licks','lick_bouts'],
             }
         
         if 'post-omissions' in kernels:
