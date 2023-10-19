@@ -223,7 +223,7 @@ def make_run_json(VERSION,label='',username=None, src_path=None, TESTING=False,
         'image_kernel_overlap_tol':5,   # Number of timesteps image kernels are allowed to overlap during entire session.
         'dropout_threshold':0.005,      # Minimum variance explained by full model
         'version_type':'standard',      # Should be either 'production' (run everything), 'standard' (run standard dropouts), 'minimal' (just full model)
-        'active': False,                # Are we fitting the active behavior (True) or passive (False)
+        'active': True,                # Are we fitting the active behavior (True) or passive (False)
         'spike_bin_width':.025,         # Duration of spike bins in s. Must be cleanly divide 750ms
     } 
 
